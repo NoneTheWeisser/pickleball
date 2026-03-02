@@ -1,17 +1,33 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { logError } from '../lib/logError.js'
 
 export default function SessionSummary() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetch(`/api/sessions/${sessionId}/summary`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load summary')
+        return r.json()
+      })
       .then(setSummary)
+      .catch((err) => {
+        logError(err, { component: 'SessionSummary', action: 'load', sessionId })
+        setError(err.message)
+      })
   }, [sessionId])
 
+  if (error && !summary) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
+        <p className="font-mono text-retro-pink text-center" role="alert">{error}</p>
+      </div>
+    )
+  }
   if (!summary) {
     return (
       <div className="flex items-center justify-center min-h-screen">

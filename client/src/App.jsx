@@ -3,6 +3,7 @@ import Landing from './pages/Landing'
 import SessionSetup from './pages/SessionSetup'
 import GameInProgress from './pages/GameInProgress'
 import SessionSummary from './pages/SessionSummary'
+import Leaderboard from './pages/Leaderboard'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/session/new" element={<SessionSetup />} />
           <Route path="/session/:sessionId/game" element={<GameInProgress />} />
           <Route path="/session/:sessionId/summary" element={<SessionSummary />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </div>
     </BrowserRouter>

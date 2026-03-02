@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { logError } from '../lib/logError.js'
 
 export default function SessionSetup() {
   const navigate = useNavigate()
   const [allPlayers, setAllPlayers] = useState([])
   const [selected, setSelected] = useState([])
   const [newName, setNewName] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetch('/api/players')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load players')
+        return r.json()
+      })
       .then(setAllPlayers)
+      .catch((err) => {
+        logError(err, { component: 'SessionSetup', action: 'loadPlayers' })
+        setError(err.message)
+      })
   }, [])
 
   function togglePlayer(player) {
@@ -24,26 +33,39 @@ export default function SessionSetup() {
   async function addNewPlayer(e) {
     e.preventDefault()
     if (!newName.trim()) return
-    const res = await fetch('/api/players', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim() }),
-    })
-    const player = await res.json()
-    setAllPlayers((prev) => [...prev, player])
-    setSelected((prev) => [...prev, player])
-    setNewName('')
+    try {
+      const res = await fetch('/api/players', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() }),
+      })
+      const player = await res.json()
+      if (!res.ok) throw new Error(player.error ?? 'Failed to add player')
+      setError(null)
+      setAllPlayers((prev) => [...prev, player])
+      setSelected((prev) => [...prev, player])
+      setNewName('')
+    } catch (err) {
+      logError(err, { component: 'SessionSetup', action: 'addPlayer' })
+      setError(err.message)
+    }
   }
 
   async function startSession() {
     if (selected.length < 4) return
-    const res = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerIds: selected.map((p) => p.id) }),
-    })
-    const session = await res.json()
-    navigate(`/session/${session.id}/game`)
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerIds: selected.map((p) => p.id) }),
+      })
+      const session = await res.json()
+      if (!res.ok) throw new Error(session.error ?? 'Failed to start session')
+      navigate(`/session/${session.id}/game`)
+    } catch (err) {
+      logError(err, { component: 'SessionSetup', action: 'startSession' })
+      setError(err.message)
+    }
   }
 
   return (
@@ -54,6 +76,9 @@ export default function SessionSetup() {
       >
         &larr; Back
       </Link>
+      {error && (
+        <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
+      )}
       <div>
         <p className="font-mono text-retro-cyan text-xs tracking-widest mb-1">ROSTER</p>
         <h2 className="font-display text-4xl tracking-wider text-retro-cream">Select Players</h2>

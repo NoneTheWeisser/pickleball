@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
 import { pickPlayers, assignTeams } from '../lib/rotation.js'
+import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
 
 // POST /api/sessions — create session + add players + start first game
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const { playerIds } = req.body
   const client = await pool.connect()
   try {
@@ -22,8 +23,8 @@ router.post('/', async (req, res) => {
       )
     }
 
-    // Start first game
-    await createNextGame(client, session.id)
+    // Start first game using auto-rotation
+    await createGameWithTeams(client, session.id, ...computeFirstTeams(playerIds))
 
     await client.query('COMMIT')
     res.status(201).json(session)
@@ -33,10 +34,10 @@ router.post('/', async (req, res) => {
   } finally {
     client.release()
   }
-})
+}))
 
 // GET /api/sessions/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params
   const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
   if (!session) return res.status(404).json({ error: 'Not found' })
@@ -48,23 +49,54 @@ router.get('/:id', async (req, res) => {
     [id]
   )
   res.json({ ...session, players })
-})
+}))
 
 // GET /api/sessions/:id/current-game
-router.get('/:id/current-game', async (req, res) => {
+router.get('/:id/current-game', asyncHandler(async (req, res) => {
   const { id } = req.params
   const game = await getCurrentGame(pool, id)
   if (!game) return res.status(404).json({ error: 'No active game' })
   res.json(game)
-})
+}))
 
-// POST /api/sessions/:id/next-game — rotate and start new game
-router.post('/:id/next-game', async (req, res) => {
+// GET /api/sessions/:id/proposed-rotation — dry run, no DB writes
+router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   const { id } = req.params
+
+  const { rows: sessionPlayers } = await pool.query(
+    `SELECT p.* FROM players p
+     JOIN session_players sp ON sp.player_id = p.id
+     WHERE sp.session_id = $1`,
+    [id]
+  )
+
+  const recentGames = await getRecentGames(pool, id, 2)
+  const courtIds = pickPlayers(sessionPlayers, recentGames)
+  const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames[0] ?? null)
+
+  const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
+  const benchIds = sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id))
+
+  res.json({
+    team1: team1Ids.map((id) => byId[id]),
+    team2: team2Ids.map((id) => byId[id]),
+    bench: benchIds.map((id) => byId[id]),
+  })
+}))
+
+// POST /api/sessions/:id/next-game — create game with explicit teams
+router.post('/:id/next-game', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { team1, team2 } = req.body // arrays of player IDs
+
+  if (!team1 || !team2 || team1.length !== 2 || team2.length !== 2) {
+    return res.status(400).json({ error: 'team1 and team2 must each have 2 player IDs' })
+  }
+
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const game = await createNextGame(client, id)
+    const game = await createGameWithTeams(client, id, team1, team2)
     await client.query('COMMIT')
     res.status(201).json(game)
   } catch (err) {
@@ -73,20 +105,43 @@ router.post('/:id/next-game', async (req, res) => {
   } finally {
     client.release()
   }
-})
+}))
+
+// POST /api/sessions/:id/players — add a late arrival
+router.post('/:id/players', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { playerId } = req.body
+
+  // Check already in session
+  const { rows: existing } = await pool.query(
+    'SELECT 1 FROM session_players WHERE session_id = $1 AND player_id = $2',
+    [id, playerId]
+  )
+  if (existing.length > 0) {
+    return res.status(409).json({ error: 'Player already in session' })
+  }
+
+  await pool.query(
+    'INSERT INTO session_players (session_id, player_id) VALUES ($1, $2)',
+    [id, playerId]
+  )
+
+  const { rows: [player] } = await pool.query('SELECT * FROM players WHERE id = $1', [playerId])
+  res.status(201).json(player)
+}))
 
 // PATCH /api/sessions/:id/end
-router.patch('/:id/end', async (req, res) => {
+router.patch('/:id/end', asyncHandler(async (req, res) => {
   const { id } = req.params
   const { rows: [session] } = await pool.query(
     'UPDATE sessions SET ended_at = NOW() WHERE id = $1 RETURNING *',
     [id]
   )
   res.json(session)
-})
+}))
 
 // GET /api/sessions/:id/summary
-router.get('/:id/summary', async (req, res) => {
+router.get('/:id/summary', asyncHandler(async (req, res) => {
   const { id } = req.params
 
   const { rows: games } = await pool.query(
@@ -131,7 +186,7 @@ router.get('/:id/summary', async (req, res) => {
   }))
 
   res.json({ games: formatted, players: playerStats })
-})
+}))
 
 // --- helpers ---
 
@@ -151,17 +206,14 @@ async function getRecentGames(client, sessionId, limit = 2) {
   return games
 }
 
-async function createNextGame(client, sessionId) {
+// Create a game with explicit team assignments and write to DB
+async function createGameWithTeams(client, sessionId, team1Ids, team2Ids) {
   const { rows: sessionPlayers } = await client.query(
     `SELECT p.* FROM players p
      JOIN session_players sp ON sp.player_id = p.id
      WHERE sp.session_id = $1`,
     [sessionId]
   )
-
-  const recentGames = await getRecentGames(client, sessionId, 2)
-  const courtIds = pickPlayers(sessionPlayers, recentGames)
-  const { team1, team2 } = assignTeams(courtIds, recentGames[0] ?? null)
 
   const { rows: [{ max: lastNum }] } = await client.query(
     'SELECT MAX(game_number) FROM games WHERE session_id = $1',
@@ -174,21 +226,31 @@ async function createNextGame(client, sessionId) {
     [sessionId, gameNumber]
   )
 
-  for (const pid of team1) {
+  for (const pid of team1Ids) {
     await client.query(
       'INSERT INTO game_players (game_id, player_id, team) VALUES ($1, $2, 1)',
       [game.id, pid]
     )
   }
-  for (const pid of team2) {
+  for (const pid of team2Ids) {
     await client.query(
       'INSERT INTO game_players (game_id, player_id, team) VALUES ($1, $2, 2)',
       [game.id, pid]
     )
   }
 
-  const players = [...team1.map((id) => ({ id, team: 1 })), ...team2.map((id) => ({ id, team: 2 }))]
-  return { ...game, players: players.map((p) => ({ ...p, ...sessionPlayers.find((sp) => sp.id === p.id) })) }
+  const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
+  const players = [
+    ...team1Ids.map((id) => ({ ...byId[id], team: 1 })),
+    ...team2Ids.map((id) => ({ ...byId[id], team: 2 })),
+  ]
+  return { ...game, players }
+}
+
+// For the very first game of a session, just shuffle and split
+function computeFirstTeams(playerIds) {
+  const shuffled = [...playerIds].sort(() => Math.random() - 0.5)
+  return [shuffled.slice(0, 2), shuffled.slice(2, 4)]
 }
 
 async function getCurrentGame(client, sessionId) {

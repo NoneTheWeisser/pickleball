@@ -14,15 +14,25 @@ export default function Landing() {
           Night
         </h1>
       </div>
-      <button
-        onClick={() => navigate('/session/new')}
-        className="font-display text-xl tracking-widest px-10 py-4 bg-retro-green text-retro-dark
-          border-2 border-retro-green hover:bg-retro-dark hover:text-retro-green
-          transition-all duration-200 shadow-retro-glow"
-      >
-        New Game
-      </button>
-      <p className="font-mono text-retro-cyan/60 text-xs">Court 1 • 2–3 players per side</p>
+      <div className="flex flex-col items-center gap-4">
+        <button
+          onClick={() => navigate('/session/new')}
+          className="font-display text-xl tracking-widest px-10 py-4 bg-retro-green text-retro-dark
+            border-2 border-retro-green hover:bg-retro-dark hover:text-retro-green
+            transition-all duration-200 shadow-retro-glow"
+        >
+          Start
+        </button>
+        <button
+          onClick={() => navigate('/leaderboard')}
+          className="font-display text-sm tracking-widest px-8 py-3 bg-transparent text-retro-cyan
+            border-2 border-retro-cyan/50 hover:border-retro-cyan hover:text-retro-cream
+            transition-all duration-200"
+        >
+          View Leaderboard
+        </button>
+      </div>
+      <p className="font-mono text-retro-cyan/60 text-xs">@nonetheweisser 2026</p>
     </div>
   )
 }
