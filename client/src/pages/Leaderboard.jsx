@@ -7,10 +7,11 @@ function KpiCard({ label, name, stat, color }) {
     gold: 'border-retro-gold text-retro-gold',
     cyan: 'border-retro-cyan text-retro-cyan',
     green: 'border-retro-green text-retro-green',
+    pink: 'border-retro-pink text-retro-pink',
   }[color] ?? 'border-retro-cream text-retro-cream'
 
   return (
-    <div className={`bg-retro-card border-2 ${colorClass} p-4 flex flex-col gap-1 flex-1 min-w-0`}>
+    <div className={`bg-retro-card border-2 ${colorClass} p-4 flex flex-col gap-1 min-w-0`}>
       <p className="font-mono text-retro-cream/50 text-[10px] tracking-widest uppercase">{label}</p>
       <p className={`font-display text-xl tracking-wider truncate ${colorClass.split(' ')[1]}`}>{name}</p>
       <p className="font-mono text-retro-cream/70 text-sm">{stat}</p>
@@ -24,13 +25,21 @@ function formatStreak(currentStreak) {
   return '—'
 }
 
+const MODES = [
+  { key: 'team', label: 'Co-Op Battle' },
+  { key: 'duel', label: 'Head to Head' },
+]
+
 export default function Leaderboard() {
   const navigate = useNavigate()
+  const [mode, setMode] = useState('team')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetch('/api/leaderboard')
+    setData(null)
+    setError(null)
+    fetch(`/api/leaderboard?mode=${mode}`)
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load leaderboard')
         return r.json()
@@ -40,7 +49,7 @@ export default function Leaderboard() {
         logError(err, { component: 'Leaderboard', action: 'load' })
         setError(err.message)
       })
-  }, [])
+  }, [mode])
 
   if (error) {
     return (
@@ -84,6 +93,22 @@ export default function Leaderboard() {
         </div>
       </div>
 
+      <div className="flex border-b border-retro-cream/10">
+        {MODES.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setMode(key)}
+            className={`font-mono text-xs tracking-widest px-4 py-2 border-b-2 transition-colors ${
+              mode === key
+                ? 'border-retro-cyan text-retro-cyan'
+                : 'border-transparent text-retro-cream/40 hover:text-retro-cream/70'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {!hasData ? (
         <p className="font-mono text-retro-cream/50 text-sm tracking-wider">
           No games played yet.
@@ -91,7 +116,7 @@ export default function Leaderboard() {
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="flex gap-3 flex-wrap">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {kpis.allTimeWinner ? (
               <KpiCard
                 label="All-Time Winner"
@@ -114,6 +139,14 @@ export default function Leaderboard() {
                 name={kpis.mostImproved.name}
                 stat={`${kpis.mostImproved.improvement > 0 ? '+' : ''}${kpis.mostImproved.improvement}% recent`}
                 color="green"
+              />
+            ) : null}
+            {kpis.longestGame ? (
+              <KpiCard
+                label="Longest Game"
+                name={`${kpis.longestGame.durationMin} min`}
+                stat={`${kpis.longestGame.score} · ${kpis.longestGame.team1.join(' & ')} vs ${kpis.longestGame.team2.join(' & ')}`}
+                color="pink"
               />
             ) : null}
           </div>

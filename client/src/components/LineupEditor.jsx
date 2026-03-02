@@ -122,7 +122,8 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   }
 
   const isSelected = (player) => selected?.player.id === player.id
-  const courtFull = team1.length === 2 && team2.length === 2
+  const [expectedTeamSize] = useState(lineup.team1.length)
+  const courtFull = team1.length === expectedTeamSize && team2.length === expectedTeamSize
 
   return (
     <div className="flex flex-col gap-6">

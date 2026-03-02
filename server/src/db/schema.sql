@@ -1,14 +1,16 @@
 CREATE TABLE IF NOT EXISTS players (
   id         SERIAL PRIMARY KEY,
   name       TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
   id         SERIAL PRIMARY KEY,
   date       DATE NOT NULL DEFAULT CURRENT_DATE,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  ended_at   TIMESTAMPTZ
+  ended_at   TIMESTAMPTZ,
+  mode       VARCHAR(10) NOT NULL DEFAULT 'team'
 );
 
 CREATE TABLE IF NOT EXISTS session_players (

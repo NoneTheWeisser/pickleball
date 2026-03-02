@@ -30,20 +30,30 @@ export default function GameInProgress() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/sessions/${sessionId}`).then((r) => {
-        if (!r.ok) throw new Error('Failed to load session')
-        return r.json()
-      }),
-      fetch(`/api/sessions/${sessionId}/current-game`).then((r) => {
-        if (!r.ok) throw new Error('Failed to load game')
-        return r.json()
-      }),
-    ])
-      .then(([s, g]) => {
-        setError(null)
+    const loadSession = fetch(`/api/sessions/${sessionId}`).then((r) => {
+      if (!r.ok) throw new Error('Failed to load session')
+      return r.json()
+    })
+
+    const loadGame = fetch(`/api/sessions/${sessionId}/current-game`).then((r) => {
+      if (r.status === 404) return null // no game yet — first game of session
+      if (!r.ok) throw new Error('Failed to load game')
+      return r.json()
+    })
+
+    Promise.all([loadSession, loadGame])
+      .then(async ([s, g]) => {
         setSession(s)
         setCurrentGame(g)
+        if (!g) {
+          // No game started yet — go straight to lineup editor for game 1
+          const res = await fetch(`/api/sessions/${sessionId}/proposed-rotation`)
+          const lineup = await res.json()
+          if (!res.ok) throw new Error(lineup.error ?? 'Failed to load lineup')
+          setProposedLineup(lineup)
+          setPhase('between')
+        }
+        setError(null)
       })
       .catch((err) => {
         logError(err, { component: 'GameInProgress', action: 'load', sessionId })
@@ -131,14 +141,41 @@ export default function GameInProgress() {
     }
   }
 
-  if (error && (!session || !currentGame)) {
-    return (
+  if (!session) {
+    return error ? (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
         <p className="font-mono text-retro-pink text-center" role="alert">{error}</p>
       </div>
+    ) : (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
+      </div>
     )
   }
-  if (!session || !currentGame) {
+
+  if (phase === 'between' && proposedLineup) {
+    const nextGameNumber = currentGame ? currentGame.game_number + 1 : 1
+    return (
+      <div className="max-w-md mx-auto px-4 py-12 flex flex-col gap-8">
+        <div>
+          <p className="font-mono text-retro-cyan text-xs tracking-widest mb-1">UP NEXT</p>
+          <h2 className="font-display text-4xl tracking-wider text-retro-cream">
+            Game {nextGameNumber}
+          </h2>
+        </div>
+        <LineupEditor
+          lineup={proposedLineup}
+          sessionId={sessionId}
+          onStart={startNextGame}
+          onAddPlayer={(player) =>
+            setSession((prev) => ({ ...prev, players: [...prev.players, player] }))
+          }
+        />
+      </div>
+    )
+  }
+
+  if (!currentGame) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
@@ -154,27 +191,6 @@ export default function GameInProgress() {
   const sitting = session.players.filter(
     (p) => !currentGame.players.find((gp) => gp.id === p.id)
   )
-
-  if (phase === 'between' && proposedLineup) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-12 flex flex-col gap-8">
-        <div>
-          <p className="font-mono text-retro-cyan text-xs tracking-widest mb-1">UP NEXT</p>
-          <h2 className="font-display text-4xl tracking-wider text-retro-cream">
-            Game {currentGame.game_number + 1}
-          </h2>
-        </div>
-        <LineupEditor
-          lineup={proposedLineup}
-          sessionId={sessionId}
-          onStart={startNextGame}
-          onAddPlayer={(player) =>
-            setSession((prev) => ({ ...prev, players: [...prev.players, player] }))
-          }
-        />
-      </div>
-    )
-  }
 
   return (
     <div className="max-w-md mx-auto px-4 py-12 flex flex-col gap-8">

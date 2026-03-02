@@ -52,13 +52,26 @@ To see the fully functional site, please visit: _not yet deployed_
 
 ## Usage
 
-1. From the landing page, click **New Game** to start a session.
-2. Add players by selecting existing ones or typing in a new name.
-3. Once you have at least 4 players, click **Start Game**. The first game is created automatically with randomized teams.
-4. During the game, the court and bench are displayed. When the game ends, enter the final score and click **Next Game**.
-5. A proposed lineup for the next game is shown — tap any two players to swap them between teams or the bench. Late arrivals can be added here as well.
-6. Click **Start Game** to confirm the lineup and begin the next game.
-7. When the night is over, click **Stop Playing** to end the session and view a recap with scores and win/loss records.
+1. From the landing page, click **Start** to begin a new session.
+2. Add players by selecting existing ones or typing in a new name. You need at least 4 to start.
+3. Click **Start Game**. A proposed lineup is shown — tap any two players to swap them between teams or the bench before confirming.
+4. During the game, the court and bench are displayed with the current score inputs.
+5. Scores follow standard pickleball rules: first to 11, win by 2. The app validates the score before letting you proceed.
+6. When the game ends, enter the final score and click **Next Game** to see the next proposed lineup. Adjust teams or bench as needed, or add a late arrival directly from this screen.
+7. Click **Stop Playing** to end the session and view a recap with scores and win/loss records for every player.
+8. The **Leaderboard** shows stats across all sessions.
+
+---
+
+## Admin
+
+Player management is available at `/admin`. From there you can:
+
+- **Edit** any player's name inline
+- **Delete** a player (soft delete — their historical data is preserved)
+- **Restore** a deleted player from the collapsed Deleted section
+
+There is also a hidden link to `/admin` on the landing page. Good luck finding it.
 
 ---
 

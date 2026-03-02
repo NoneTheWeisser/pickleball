@@ -7,13 +7,14 @@ const router = Router()
 
 // POST /api/sessions — create session + add players + start first game
 router.post('/', asyncHandler(async (req, res) => {
-  const { playerIds } = req.body
+  const { playerIds, mode = 'team' } = req.body
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
     const { rows: [session] } = await client.query(
-      'INSERT INTO sessions DEFAULT VALUES RETURNING *'
+      'INSERT INTO sessions (mode) VALUES ($1) RETURNING *',
+      [mode]
     )
 
     for (const pid of playerIds) {
@@ -22,9 +23,6 @@ router.post('/', asyncHandler(async (req, res) => {
         [session.id, pid]
       )
     }
-
-    // Start first game using auto-rotation
-    await createGameWithTeams(client, session.id, ...computeFirstTeams(playerIds))
 
     await client.query('COMMIT')
     res.status(201).json(session)
@@ -63,12 +61,19 @@ router.get('/:id/current-game', asyncHandler(async (req, res) => {
 router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   const { id } = req.params
 
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+
   const { rows: sessionPlayers } = await pool.query(
     `SELECT p.* FROM players p
      JOIN session_players sp ON sp.player_id = p.id
      WHERE sp.session_id = $1`,
     [id]
   )
+
+  if (session.mode === 'duel') {
+    return res.json({ team1: [sessionPlayers[0]], team2: [sessionPlayers[1]], bench: [] })
+  }
 
   const recentGames = await getRecentGames(pool, id, 2)
   const courtIds = pickPlayers(sessionPlayers, recentGames)
@@ -89,8 +94,12 @@ router.post('/:id/next-game', asyncHandler(async (req, res) => {
   const { id } = req.params
   const { team1, team2 } = req.body // arrays of player IDs
 
-  if (!team1 || !team2 || team1.length !== 2 || team2.length !== 2) {
-    return res.status(400).json({ error: 'team1 and team2 must each have 2 player IDs' })
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+  const teamSize = session.mode === 'duel' ? 1 : 2
+
+  if (!team1 || !team2 || team1.length !== teamSize || team2.length !== teamSize) {
+    return res.status(400).json({ error: `team1 and team2 must each have ${teamSize} player ID(s)` })
   }
 
   const client = await pool.connect()
@@ -245,12 +254,6 @@ async function createGameWithTeams(client, sessionId, team1Ids, team2Ids) {
     ...team2Ids.map((id) => ({ ...byId[id], team: 2 })),
   ]
   return { ...game, players }
-}
-
-// For the very first game of a session, just shuffle and split
-function computeFirstTeams(playerIds) {
-  const shuffled = [...playerIds].sort(() => Math.random() - 0.5)
-  return [shuffled.slice(0, 2), shuffled.slice(2, 4)]
 }
 
 async function getCurrentGame(client, sessionId) {
