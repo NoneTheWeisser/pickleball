@@ -6,7 +6,7 @@ A lightweight web app for managing weekly pickleball nights with a small group o
 
 The app handles the logistics so you can focus on playing: add players for the night (including late arrivals), auto-rotates who sits out and who plays next, lets you override the lineup before each game, and tracks wins and losses across the session.
 
-To see the fully functional site, please visit: _not yet deployed_
+To see the fully functional site, please visit: https://nonetheweisser-pickleball-night.fly.dev
 
 ---
 
@@ -38,7 +38,7 @@ To see the fully functional site, please visit: _not yet deployed_
    ```
    cp server/.env.example server/.env
    ```
-   The default value (`postgresql://localhost/pickleball`) works for local development with Postgres.app. No other changes needed to get started.
+   The default value (`postgresql://localhost/pickleball`) works for local development with Postgres.app. No other changes needed to get started locally.
 
 6. Start the app:
    ```
@@ -55,23 +55,49 @@ To see the fully functional site, please visit: _not yet deployed_
 1. From the landing page, click **Start** to begin a new session.
 2. Add players by selecting existing ones or typing in a new name. You need at least 4 to start.
 3. Click **Start Game**. A proposed lineup is shown — tap any two players to swap them between teams or the bench before confirming.
-4. During the game, the court and bench are displayed with the current score inputs.
-5. Scores follow standard pickleball rules: first to 11, win by 2. The app validates the score before letting you proceed.
-6. When the game ends, enter the final score and click **Next Game** to see the next proposed lineup. Adjust teams or bench as needed, or add a late arrival directly from this screen.
+4. During the game, the court and bench are displayed. Tap the **SCORE** button to open a full-screen score entry sheet with large touch-friendly inputs.
+5. Enter the final score as two integers — no format enforcement, so any score works (11–9, 15–13, etc.).
+6. When the game ends, click **Next Game** to see the next proposed lineup. Adjust teams or bench as needed, or add a late arrival directly from this screen. You can also edit a previously submitted score if you made a mistake.
 7. Click **Stop Playing** to end the session and view a recap with scores and win/loss records for every player.
 8. The **Leaderboard** shows stats across all sessions.
+
+### Head-to-head mode
+
+On the session setup screen you can switch to **Head-to-head** mode for 1v1 play. Rotation and team assignment are skipped — only two players are on court at a time.
 
 ---
 
 ## Admin
 
-Player management is available at `/admin`. From there you can:
+The admin panel is available at `/admin` and is split into two tabs.
 
+**Players tab**
 - **Edit** any player's name inline
 - **Delete** a player (soft delete — their historical data is preserved)
 - **Restore** a deleted player from the collapsed Deleted section
 
+**Sessions tab**
+- Lists all sessions by date with their mode and status
+- **Delete** a session — permanently removes the session and all associated games and scores (requires inline confirmation)
+
 There is also a hidden link to `/admin` on the landing page. Good luck finding it.
+
+---
+
+## Deployment
+
+The app is deployed on [Fly.io](https://fly.io/) with [Neon](https://neon.tech/) as the production database.
+
+- **Local dev** uses a local PostgreSQL database (`postgresql://localhost/pickleball`) — no SSL required
+- **Production** uses a Neon connection string stored as a Fly secret (`DATABASE_URL`) — SSL is applied automatically
+
+To deploy:
+```
+npm run build
+fly deploy
+```
+
+The build step compiles the React client into `client/dist/`, which the Express server serves as static files in production.
 
 ---
 
@@ -82,8 +108,8 @@ There is also a hidden link to `/admin` on the landing page. Good luck finding i
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Node.js](https://nodejs.org/)
 - [Express](https://expressjs.com/)
-- [PostgreSQL](https://www.postgresql.org/)
-- [Fly.io](https://fly.io/) _(deployment target)_
+- [PostgreSQL](https://www.postgresql.org/) / [Neon](https://neon.tech/) (production)
+- [Fly.io](https://fly.io/) (deployment)
 
 ---
 
