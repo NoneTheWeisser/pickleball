@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
@@ -24,6 +24,8 @@ export default function GameInProgress() {
   const [currentGame, setCurrentGame] = useState(null)
   const [score1, setScore1] = useState('')
   const [score2, setScore2] = useState('')
+
+  const [scoreModalOpen, setScoreModalOpen] = useState(false)
 
   // 'playing' | 'between'
   const [phase, setPhase] = useState('playing')
@@ -240,33 +242,20 @@ export default function GameInProgress() {
         </section>
       )}
 
-      <section className="bg-retro-card border-2 border-retro-green/40 p-3">
-        <h3 className="font-mono text-retro-green text-xs tracking-widest mb-2">Enter Score</h3>
-        <div className="flex items-center justify-center gap-1">
-          <input
-            type="number"
-            value={score1}
-            onChange={(e) => setScore1(e.target.value)}
-            placeholder="0"
-            min="0"
-            className="w-10 px-1 py-0.5 font-mono text-sm text-center bg-retro-dark border
-              border-retro-green/50 text-retro-cream focus:outline-none focus:border-retro-green"
-          />
-          <span className="font-mono text-retro-pink text-xs">–</span>
-          <input
-            type="number"
-            value={score2}
-            onChange={(e) => setScore2(e.target.value)}
-            placeholder="0"
-            min="0"
-            className="w-10 px-1 py-0.5 font-mono text-sm text-center bg-retro-dark border
-              border-retro-cyan/50 text-retro-cream focus:outline-none focus:border-retro-cyan"
-          />
-        </div>
-        {scoreError && (
-          <p className="font-mono text-retro-pink text-xs mt-2 text-center">{scoreError}</p>
+      <button
+        onClick={() => setScoreModalOpen(true)}
+        className="w-full bg-retro-card border-2 border-retro-green/40 p-4
+          flex items-center justify-between active:border-retro-green transition-colors"
+      >
+        <span className="font-mono text-retro-green text-xs tracking-widest">SCORE</span>
+        {scoreValid ? (
+          <span className="font-display text-3xl text-retro-cream tracking-wider">
+            {score1} – {score2}
+          </span>
+        ) : (
+          <span className="font-mono text-retro-cream/40 text-sm tracking-wider">Tap to enter ›</span>
         )}
-      </section>
+      </button>
 
       <div className="flex flex-col gap-3">
         <button
@@ -285,6 +274,113 @@ export default function GameInProgress() {
             hover:border-retro-pink/50 hover:text-retro-pink transition-colors"
         >
           Stop Playing
+        </button>
+      </div>
+      {scoreModalOpen && (
+        <ScoreModal
+          team1={team1}
+          team2={team2}
+          initialScore1={score1}
+          initialScore2={score2}
+          onConfirm={(s1, s2) => {
+            setScore1(s1)
+            setScore2(s2)
+            setScoreModalOpen(false)
+          }}
+          onClose={() => setScoreModalOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ScoreModal({ team1, team2, initialScore1, initialScore2, onConfirm, onClose }) {
+  const [s1, setS1] = useState(initialScore1)
+  const [s2, setS2] = useState(initialScore2)
+  const score2Ref = useRef(null)
+
+  const error = validateScore(s1, s2)
+  const valid = s1 !== '' && s2 !== '' && error === null
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70" />
+
+      {/* Bottom sheet */}
+      <div
+        className="relative bg-retro-card border-t-2 border-retro-green/40 p-6 flex flex-col gap-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-mono text-retro-green text-xs tracking-widest text-center">FINAL SCORE</p>
+
+        <div className="flex items-end gap-4">
+          {/* Team 1 */}
+          <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+            <span className="font-mono text-xs text-retro-cream/50 tracking-widest truncate w-full text-center">
+              {team1.map((p) => p.name).join(' & ')}
+            </span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={s1}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 2)
+                setS1(val)
+                if (val.length === 2) score2Ref.current?.focus()
+              }}
+              autoFocus
+              placeholder="0"
+              className="w-full text-center font-display text-6xl text-retro-cream
+                bg-retro-dark border-2 border-retro-green/50 focus:border-retro-green
+                focus:outline-none py-4"
+            />
+          </div>
+
+          <span className="font-mono text-retro-pink text-3xl pb-5 flex-shrink-0">–</span>
+
+          {/* Team 2 */}
+          <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+            <span className="font-mono text-xs text-retro-cream/50 tracking-widest truncate w-full text-center">
+              {team2.map((p) => p.name).join(' & ')}
+            </span>
+            <input
+              ref={score2Ref}
+              type="tel"
+              inputMode="numeric"
+              value={s2}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 2)
+                setS2(val)
+              }}
+              placeholder="0"
+              className="w-full text-center font-display text-6xl text-retro-cream
+                bg-retro-dark border-2 border-retro-cyan/50 focus:border-retro-cyan
+                focus:outline-none py-4"
+            />
+          </div>
+        </div>
+
+        {s1 !== '' && s2 !== '' && error && (
+          <p className="font-mono text-retro-pink text-xs text-center -mt-2">{error}</p>
+        )}
+
+        <button
+          onClick={() => valid && onConfirm(s1, s2)}
+          disabled={!valid}
+          className="w-full py-5 font-display text-2xl tracking-widest bg-retro-green
+            text-retro-dark border-2 border-retro-green disabled:bg-retro-card
+            disabled:border-retro-cream/20 disabled:text-retro-cream/40
+            shadow-retro-glow disabled:shadow-none"
+        >
+          Confirm
+        </button>
+
+        <button
+          onClick={onClose}
+          className="font-mono text-retro-cream/50 text-sm text-center py-1 hover:text-retro-cream transition-colors"
+        >
+          Cancel
         </button>
       </div>
     </div>

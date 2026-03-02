@@ -7,12 +7,26 @@ export default function Admin() {
   const [editName, setEditName] = useState('')
   const [showDeleted, setShowDeleted] = useState(false)
   const [error, setError] = useState(null)
+  const [sessions, setSessions] = useState([])
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(null)
+  const [tab, setTab] = useState('players')
 
   useEffect(() => {
     fetch('/api/players?all=true')
       .then((r) => r.json())
       .then(setPlayers)
+    fetch('/api/sessions')
+      .then((r) => r.json())
+      .then(setSessions)
   }, [])
+
+  async function deleteSession(id) {
+    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (!res.ok) return setError(data.error)
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+    setConfirmDeleteSession(null)
+  }
 
   const active = players.filter((p) => !p.deleted_at)
   const deleted = players.filter((p) => p.deleted_at)
@@ -71,11 +85,27 @@ export default function Admin() {
         </Link>
       </div>
 
+      <div className="flex border-b border-retro-cream/10">
+        {['players', 'sessions'].map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`font-mono text-xs tracking-widest px-4 py-2 transition-colors capitalize
+              ${tab === t
+                ? 'text-retro-cyan border-b-2 border-retro-cyan -mb-px'
+                : 'text-retro-cream/40 hover:text-retro-cream/70'
+              }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
 
-      <section className="flex flex-col gap-2">
+      {tab === 'players' && <section className="flex flex-col gap-2">
         <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-1">
           Active — {active.length}
         </h3>
@@ -132,9 +162,9 @@ export default function Admin() {
             )}
           </div>
         ))}
-      </section>
+      </section>}
 
-      {deleted.length > 0 && (
+      {tab === 'players' && deleted.length > 0 && (
         <section className="flex flex-col gap-2">
           <button
             onClick={() => setShowDeleted((v) => !v)}
@@ -158,6 +188,56 @@ export default function Admin() {
               >
                 Restore
               </button>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {tab === 'sessions' && (
+        <section className="flex flex-col gap-2">
+          {sessions.length === 0 && (
+            <p className="font-mono text-retro-cream/40 text-sm">No sessions.</p>
+          )}
+          {sessions.map((session) => (
+            <div
+              key={session.id}
+              className="flex items-center gap-2 bg-retro-card border border-retro-cream/10 px-4 py-3"
+            >
+              <div className="flex-1 min-w-0">
+                <span className="font-mono text-sm text-retro-cream">
+                  {new Date(session.started_at).toLocaleDateString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                  })}
+                </span>
+                <span className="font-mono text-xs text-retro-cream/40 ml-2">
+                  #{session.id} &middot; {session.mode}
+                  {session.ended_at ? '' : ' \u2022 active'}
+                </span>
+              </div>
+              {confirmDeleteSession === session.id ? (
+                <>
+                  <span className="font-mono text-xs text-retro-pink">Delete?</span>
+                  <button
+                    onClick={() => deleteSession(session.id)}
+                    className="font-mono text-xs text-retro-pink hover:text-retro-pink/70 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteSession(null)}
+                    className="font-mono text-xs text-retro-cream/40 hover:text-retro-cream/70 transition-colors"
+                  >
+                    No
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteSession(session.id)}
+                  className="font-mono text-xs text-retro-cream/30 hover:text-retro-pink transition-colors"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
         </section>

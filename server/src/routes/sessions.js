@@ -34,6 +34,25 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 }))
 
+// GET /api/sessions — list all sessions, newest first
+router.get('/', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT * FROM sessions ORDER BY started_at DESC'
+  )
+  res.json(rows)
+}))
+
+// DELETE /api/sessions/:id — hard delete (cascades to games, game_players, session_players)
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { rows: [session] } = await pool.query(
+    'DELETE FROM sessions WHERE id = $1 RETURNING *',
+    [id]
+  )
+  if (!session) return res.status(404).json({ error: 'Not found' })
+  res.json({ deleted: true, session })
+}))
+
 // GET /api/sessions/:id
 router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params

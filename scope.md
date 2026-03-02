@@ -103,29 +103,29 @@ Added `src/clockify.js` adapter (workspace, users, time entries), defined submit
 
 ### MVP
 
-- [ ] Landing page with New Game
-- [ ] Add new players
-- [ ] Select existing players for a session
-- [ ] Start game (first 4 on court)
-- [ ] Track game start time
-- [ ] Enter score when game ends
-- [ ] Rotation logic (no repeat partners, rotate sitters in / 2-game players out)
-- [ ] Start new game or stop playing
-- [ ] Session summary on stop
+- [x] Landing page with New Game
+- [x] Add new players
+- [x] Select existing players for a session
+- [x] Start game (first 4 on court)
+- [x] Track game start time
+- [x] Enter score when game ends
+- [x] Rotation logic (no repeat partners, rotate sitters in / 2-game players out)
+- [x] Start new game or stop playing
+- [x] Session summary on stop
 
 ### Later / Nice-to-Have
 
-- [ ] Stats: wins, points, streaks
+- [x] Stats: wins, points, streaks
 - [ ] Playful elements: nicknames, achievements, fun leaderboard copy
-- [ ] Head-to-head records
-- [ ] Historical view across sessions
+- [x] Head-to-head records
+- [x] Historical view across sessions
 
 ### Stretch Goals
 
-- [ ] **Leaderboard** — Standings across sessions, fun rankings
+- [x] **Leaderboard** — Standings across sessions, fun rankings
 - [ ] **Profile settings** — Custom avatars, nicknames, maybe team colors
 - [ ] **React Native** — Wrap / port to mobile (good learning project)
-- [ ] **Admin page** — Full CRUD on players and any other entities that need it
+- [x] **Admin page** — Full CRUD on players and any other entities that need it
 
 ---
 
