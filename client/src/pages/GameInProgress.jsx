@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
+import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
 import { logError } from '../lib/logError.js'
 
 function validateScore(s1, s2) {
@@ -28,6 +29,7 @@ export default function GameInProgress() {
   const [phase, setPhase] = useState('playing')
   const [proposedLineup, setProposedLineup] = useState(null)
   const [error, setError] = useState(null)
+  const [panelOpen, setPanelOpen] = useState(false)
 
   useEffect(() => {
     const loadSession = fetch(`/api/sessions/${sessionId}`).then((r) => {
@@ -201,10 +203,26 @@ export default function GameInProgress() {
             Game {currentGame.game_number}
           </h2>
         </div>
-        <span className="font-mono text-retro-cyan/80 text-sm">
-          {new Date(currentGame.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => setPanelOpen(true)}
+            className="font-mono text-xs text-retro-cyan/60 hover:text-retro-cyan tracking-widest transition-colors"
+          >
+            {session?.date ? formatSessionDate(session.date) : 'Session'} ›
+          </button>
+          <span className="font-mono text-retro-cyan/80 text-sm">
+            {new Date(currentGame.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
       </div>
+
+      <SessionPanel
+        sessionId={sessionId}
+        sessionDate={session.date}
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        onScoreEdited={() => {}}
+      />
 
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>

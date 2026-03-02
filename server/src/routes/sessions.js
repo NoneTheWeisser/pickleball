@@ -49,6 +49,24 @@ router.get('/:id', asyncHandler(async (req, res) => {
   res.json({ ...session, players })
 }))
 
+// GET /api/sessions/:id/games — all games (completed + in-progress)
+router.get('/:id/games', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { rows: games } = await pool.query(
+    `SELECT g.*,
+            json_agg(json_build_object('id', p.id, 'name', p.name, 'team', gp.team)
+                     ORDER BY gp.team, p.name) AS players
+     FROM games g
+     JOIN game_players gp ON gp.game_id = g.id
+     JOIN players p ON p.id = gp.player_id
+     WHERE g.session_id = $1
+     GROUP BY g.id
+     ORDER BY g.game_number`,
+    [id]
+  )
+  res.json(games)
+}))
+
 // GET /api/sessions/:id/current-game
 router.get('/:id/current-game', asyncHandler(async (req, res) => {
   const { id } = req.params

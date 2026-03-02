@@ -31,7 +31,7 @@ router.patch('/:id/score', asyncHandler(async (req, res) => {
 
     const { rows: [game] } = await client.query(
       `UPDATE games
-       SET score_team1 = $1, score_team2 = $2, ended_at = NOW()
+       SET score_team1 = $1, score_team2 = $2, ended_at = COALESCE(ended_at, NOW())
        WHERE id = $3
        RETURNING *`,
       [score_team1, score_team2, id]
