@@ -7,7 +7,7 @@ import SessionSummary from './pages/SessionSummary'
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-950 text-white">
+      <div className="min-h-screen bg-retro-dark text-retro-cream retro-scanlines">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/session/new" element={<SessionSetup />} />

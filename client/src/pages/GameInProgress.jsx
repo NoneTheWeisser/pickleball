@@ -52,7 +52,11 @@ export default function GameInProgress() {
   }
 
   if (!session || !currentGame) {
-    return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
+      </div>
+    )
   }
 
   const team1 = currentGame.players.filter((p) => p.team === 1)
@@ -64,44 +68,51 @@ export default function GameInProgress() {
   return (
     <div className="max-w-md mx-auto px-4 py-12 flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Game {currentGame.game_number}</h2>
-        <span className="text-sm text-gray-400">
+        <div>
+          <p className="font-mono text-retro-cyan text-xs tracking-widest">LIVE</p>
+          <h2 className="font-display text-4xl tracking-wider text-retro-cream">
+            Game {currentGame.game_number}
+          </h2>
+        </div>
+        <span className="font-mono text-retro-cyan/80 text-sm">
           {new Date(currentGame.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
 
       <section className="flex flex-col gap-4">
-        <TeamCard label="Team 1" players={team1} />
-        <div className="text-center text-gray-500 text-sm">vs</div>
-        <TeamCard label="Team 2" players={team2} />
+        <TeamCard label="Team 1" players={team1} accent="green" />
+        <div className="text-center font-mono text-retro-pink text-sm tracking-widest">vs</div>
+        <TeamCard label="Team 2" players={team2} accent="cyan" />
       </section>
 
       {sitting.length > 0 && (
-        <section>
-          <h3 className="text-sm uppercase tracking-widest text-gray-400 mb-2">Sitting Out</h3>
-          <p className="text-gray-300">{sitting.map((p) => p.name).join(', ')}</p>
+        <section className="bg-retro-card border border-retro-cream/10 p-3">
+          <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-1">Bench</h3>
+          <p className="font-mono text-retro-cream/80 text-sm">{sitting.map((p) => p.name).join(', ')}</p>
         </section>
       )}
 
-      <section>
-        <h3 className="text-sm uppercase tracking-widest text-gray-400 mb-3">Enter Score</h3>
-        <div className="flex items-center gap-3">
+      <section className="bg-retro-card border-2 border-retro-green/40 p-3">
+        <h3 className="font-mono text-retro-green text-xs tracking-widest mb-1">Enter Score</h3>
+        <div className="flex items-center justify-center gap-1">
           <input
             type="number"
             value={score1}
             onChange={(e) => setScore1(e.target.value)}
-            placeholder="Team 1"
+            placeholder="0"
             min="0"
-            className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-center text-lg focus:outline-none focus:border-green-500"
+            className="w-10 px-1 py-0.5 font-mono text-sm text-center bg-retro-dark border 
+              border-retro-green/50 text-retro-cream focus:outline-none focus:border-retro-green"
           />
-          <span className="text-gray-500">–</span>
+          <span className="font-mono text-retro-pink text-xs">–</span>
           <input
             type="number"
             value={score2}
             onChange={(e) => setScore2(e.target.value)}
-            placeholder="Team 2"
+            placeholder="0"
             min="0"
-            className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-center text-lg focus:outline-none focus:border-green-500"
+            className="w-10 px-1 py-0.5 font-mono text-sm text-center bg-retro-dark border 
+              border-retro-cyan/50 text-retro-cream focus:outline-none focus:border-retro-cyan"
           />
         </div>
       </section>
@@ -110,13 +121,17 @@ export default function GameInProgress() {
         <button
           onClick={startNextGame}
           disabled={!score1 || !score2}
-          className="w-full py-4 font-semibold bg-green-500 hover:bg-green-400 disabled:bg-gray-700 disabled:text-gray-500 rounded-xl transition-colors"
+          className="w-full py-4 font-display text-xl tracking-widest bg-retro-green text-retro-dark
+            border-2 border-retro-green disabled:bg-retro-card disabled:border-retro-cream/20
+            disabled:text-retro-cream/40 hover:enabled:bg-retro-dark hover:enabled:text-retro-green
+            transition-all shadow-retro-glow disabled:shadow-none"
         >
-          Start Next Game
+          Next Game
         </button>
         <button
           onClick={stopPlaying}
-          className="w-full py-3 font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-xl transition-colors"
+          className="w-full py-3 font-mono text-retro-cream/70 bg-retro-card border border-retro-cream/20
+            hover:border-retro-pink/50 hover:text-retro-pink transition-colors"
         >
           Stop Playing
         </button>
@@ -125,11 +140,15 @@ export default function GameInProgress() {
   )
 }
 
-function TeamCard({ label, players }) {
+function TeamCard({ label, players, accent = 'green' }) {
+  const borderColor = accent === 'cyan' ? 'border-retro-cyan/40' : 'border-retro-green/40'
+  const textColor = accent === 'cyan' ? 'text-retro-cyan' : 'text-retro-green'
   return (
-    <div className="bg-gray-800 rounded-xl p-4">
-      <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">{label}</p>
-      <p className="text-lg font-medium">{players.map((p) => p.name).join(' & ')}</p>
+    <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
+      <p className={`font-mono text-xs tracking-widest ${textColor} mb-2`}>{label}</p>
+      <p className="font-display text-xl tracking-wide text-retro-cream">
+        {players.map((p) => p.name).join(' & ')}
+      </p>
     </div>
   )
 }
