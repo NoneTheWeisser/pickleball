@@ -15,6 +15,7 @@ Schema lives at `server/src/db/schema.sql`.
 | id | SERIAL PK | |
 | name | TEXT | |
 | created_at | TIMESTAMPTZ | default NOW() |
+| deleted_at | TIMESTAMPTZ | null = active; set = soft-deleted |
 
 ### sessions
 | Column | Type | Notes |

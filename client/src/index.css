@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --retro-green: #00ff88;
+    --retro-pink: #ff1493;
+    --retro-cyan: #00d4ff;
+    --retro-gold: #ffd700;
+    --retro-cream: #fffef0;
+    --retro-dark: #0d0d12;
+    --retro-card: #16161d;
+  }
+}
+
+/* Subtle scanline overlay for that VHS feel */
+.retro-scanlines::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}

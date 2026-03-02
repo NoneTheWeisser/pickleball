@@ -3,16 +3,20 @@ import Landing from './pages/Landing'
 import SessionSetup from './pages/SessionSetup'
 import GameInProgress from './pages/GameInProgress'
 import SessionSummary from './pages/SessionSummary'
+import Leaderboard from './pages/Leaderboard'
+import Admin from './pages/Admin'
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-950 text-white">
+      <div className="min-h-screen bg-retro-dark text-retro-cream retro-scanlines">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/session/new" element={<SessionSetup />} />
           <Route path="/session/:sessionId/game" element={<GameInProgress />} />
           <Route path="/session/:sessionId/summary" element={<SessionSummary />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </div>
     </BrowserRouter>
