@@ -97,7 +97,7 @@ export default function SessionSetup() {
       </div>
 
       <section className="bg-retro-card border border-retro-green/30 p-4">
-        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">Add New Player</h3>
+        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">Create New Player</h3>
         <form onSubmit={addNewPlayer} className="flex gap-2">
           <input
             value={newName}

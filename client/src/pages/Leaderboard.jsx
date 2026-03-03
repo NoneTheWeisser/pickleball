@@ -88,7 +88,7 @@ export default function Leaderboard() {
         <div>
           <p className="font-mono text-retro-cyan text-xs tracking-[0.3em] mb-1">ALL-TIME</p>
           <h1 className="font-display text-5xl tracking-widest text-retro-cream uppercase">
-            Leaderboard
+            High Scores
           </h1>
         </div>
       </div>

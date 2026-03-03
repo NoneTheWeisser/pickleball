@@ -6,6 +6,7 @@ import SessionSummary from './pages/SessionSummary'
 import Leaderboard from './pages/Leaderboard'
 import Admin from './pages/Admin'
 import Options from './pages/Options'
+import Footer from './components/Footer'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </div>
+      <Footer />
     </BrowserRouter>
   )
 }

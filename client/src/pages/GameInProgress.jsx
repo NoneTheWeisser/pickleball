@@ -175,6 +175,13 @@ export default function GameInProgress() {
             setSession((prev) => ({ ...prev, players: [...prev.players, player] }))
           }
         />
+        <button
+          onClick={stopPlaying}
+          className="w-full py-3 font-mono text-retro-cream/70 bg-retro-card border border-retro-cream/20
+            hover:border-retro-pink/50 hover:text-retro-pink transition-colors"
+        >
+          Stop Playing
+        </button>
       </div>
     )
   }

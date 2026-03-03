@@ -18,6 +18,15 @@ export default function Landing() {
       .catch(() => { })
   }, [])
 
+  async function endSession(id) {
+    await fetch(`/api/sessions/${id}/end`, { method: 'PATCH' }).catch(() => {})
+    setActiveSessions(prev => {
+      const updated = prev.filter(s => s.id !== id)
+      if (updated.length === 0) setShowLoadModal(false)
+      return updated
+    })
+  }
+
   useEffect(() => {
     if (!showStartModal && !showLoadModal) return
     function onKey(e) {
@@ -42,10 +51,10 @@ export default function Landing() {
         </h1>
       </div>
 
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4 w-48">
         <button
           onClick={() => setShowStartModal(true)}
-          className="font-display text-xl tracking-widest px-10 py-4 bg-retro-green text-retro-dark
+          className="w-full font-display text-xl tracking-widest py-4 bg-retro-green text-retro-dark
             border-2 border-retro-green hover:bg-retro-dark hover:text-retro-green
             transition-all duration-200 shadow-retro-glow"
         >
@@ -54,7 +63,7 @@ export default function Landing() {
         {activeSessions.length > 0 && (
           <button
             onClick={() => setShowLoadModal(true)}
-            className="font-display text-sm tracking-widest px-8 py-3 bg-transparent text-retro-gold
+            className="w-full font-display text-sm tracking-widest py-3 bg-transparent text-retro-gold
               border-2 border-retro-gold/50 hover:border-retro-gold hover:text-retro-cream
               transition-all duration-200"
           >
@@ -63,11 +72,11 @@ export default function Landing() {
         )}
         <button
           onClick={() => navigate('/leaderboard')}
-          className="font-display text-sm tracking-widest px-8 py-3 bg-transparent text-retro-cyan
+          className="w-full font-display text-sm tracking-widest py-3 bg-transparent text-retro-cyan
             border-2 border-retro-cyan/50 hover:border-retro-cyan hover:text-retro-cream
             transition-all duration-200"
         >
-          Leaderboard
+          High Scores
         </button>
       </div>
 
@@ -77,10 +86,6 @@ export default function Landing() {
       >
         OPTIONS
       </button>
-
-      <p className="absolute bottom-4 font-mono text-retro-cream/20 text-xs tracking-widest">
-        @nonetheweisser 2026
-      </p>
 
       {/* Start modal */}
       {showStartModal && (
@@ -153,20 +158,31 @@ export default function Landing() {
 
             <div className="flex flex-col gap-3">
               {activeSessions.map((session) => (
-                <button
+                <div
                   key={session.id}
-                  onClick={() => navigate(`/session/${session.id}/game`)}
-                  className="w-full flex flex-col gap-1 p-4 bg-retro-card border-2 border-retro-gold/40
-                    hover:border-retro-gold hover:bg-retro-gold/10 transition-all text-left"
+                  className="w-full flex items-center gap-2 bg-retro-card border-2 border-retro-gold/40
+                    hover:border-retro-gold transition-all"
                 >
-                  <span className="font-mono text-retro-gold text-sm">
-                    {(session.players ?? []).map(p => p.name).join(' · ')}
-                  </span>
-                  <span className="font-mono text-retro-cream/40 text-xs">
-                    {session.completed_games} game{session.completed_games !== '1' ? 's' : ''} played
-                    · {formatDate(session.started_at)}
-                  </span>
-                </button>
+                  <button
+                    className="flex flex-col gap-1 p-4 flex-1 text-left"
+                    onClick={() => navigate(`/session/${session.id}/game`)}
+                  >
+                    <span className="font-mono text-retro-gold text-sm">
+                      {(session.players ?? []).map(p => p.name).join(' · ')}
+                    </span>
+                    <span className="font-mono text-retro-cream/40 text-xs">
+                      {session.completed_games} game{session.completed_games !== '1' ? 's' : ''} played
+                      · {formatDate(session.started_at)}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => endSession(session.id)}
+                    className="font-mono text-retro-pink text-xs tracking-widest
+                      transition-colors pr-4 py-4 hover:text-retro-cream"
+                  >
+                    End
+                  </button>
+                </div>
               ))}
             </div>
 
