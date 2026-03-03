@@ -11,18 +11,20 @@ import Footer from './components/Footer'
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-retro-dark text-retro-cream retro-scanlines">
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/session/new" element={<SessionSetup />} />
-          <Route path="/session/:sessionId/game" element={<GameInProgress />} />
-          <Route path="/session/:sessionId/summary" element={<SessionSummary />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/options" element={<Options />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
+      <div className="min-h-screen flex flex-col bg-retro-dark text-retro-cream retro-scanlines">
+        <div className="flex-1">
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/session/new" element={<SessionSetup />} />
+            <Route path="/session/:sessionId/game" element={<GameInProgress />} />
+            <Route path="/session/:sessionId/summary" element={<SessionSummary />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/options" element={<Options />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
+        </div>
+        <Footer />
       </div>
-      <Footer />
     </BrowserRouter>
   )
 }
