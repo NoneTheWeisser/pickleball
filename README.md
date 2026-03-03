@@ -61,15 +61,23 @@ To see the fully functional site, please visit: https://nonetheweisser-picklebal
 7. Click **Stop Playing** to end the session and view a recap with scores and win/loss records for every player.
 8. The **Leaderboard** shows stats across all sessions.
 
+### Resuming a session
+
+If you close the tab or navigate away mid-session, a **Load Game** button appears on the landing page whenever there are sessions still in progress. Clicking it opens a modal listing all resumable sessions with player names, games played, and date — tap any entry to jump straight back in.
+
 ### Head-to-head mode
 
 On the session setup screen you can switch to **Head-to-head** mode for 1v1 play. Rotation and team assignment are skipped — only two players are on court at a time.
 
 ---
 
-## Admin
+## Options
 
-The admin panel is available at `/admin` and is split into two tabs.
+Click the **Options** button at the bottom of the landing page to access app settings. Currently the only entry is **Admin Panel**.
+
+### Admin Panel (`/admin`)
+
+The admin panel is split into two tabs.
 
 **Players tab**
 - **Edit** any player's name inline
@@ -79,8 +87,6 @@ The admin panel is available at `/admin` and is split into two tabs.
 **Sessions tab**
 - Lists all sessions by date with their mode and status
 - **Delete** a session — permanently removes the session and all associated games and scores (requires inline confirmation)
-
-There is also a hidden link to `/admin` on the landing page. Good luck finding it.
 
 ---
 

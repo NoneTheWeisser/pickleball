@@ -53,6 +53,23 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   res.json({ deleted: true, session })
 }))
 
+// GET /api/sessions/active — sessions that haven't ended yet
+router.get('/active', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT s.*,
+            COUNT(DISTINCT g.id) FILTER (WHERE g.ended_at IS NOT NULL) AS completed_games,
+            json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name)) AS players
+     FROM sessions s
+     JOIN session_players sp ON sp.session_id = s.id
+     JOIN players p ON p.id = sp.player_id
+     LEFT JOIN games g ON g.session_id = s.id
+     WHERE s.ended_at IS NULL
+     GROUP BY s.id
+     ORDER BY s.started_at DESC`
+  )
+  res.json(rows)
+}))
+
 // GET /api/sessions/:id
 router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params
