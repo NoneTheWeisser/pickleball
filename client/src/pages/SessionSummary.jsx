@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function SessionSummary() {
   const { sessionId } = useParams()
@@ -29,11 +30,7 @@ export default function SessionSummary() {
     )
   }
   if (!summary) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   const mvp = summary.players.length

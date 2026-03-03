@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
+import LoadingScreen from '../components/LoadingScreen'
 
 function KpiCard({ label, name, stat, color }) {
   const colorClass = {
@@ -66,11 +67,7 @@ export default function Leaderboard() {
   }
 
   if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   const { kpis, players } = data

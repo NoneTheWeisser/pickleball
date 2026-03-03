@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
 import { logError } from '../lib/logError.js'
+import LoadingScreen from '../components/LoadingScreen'
 
 function validateScore(s1, s2) {
   const a = parseInt(s1)
@@ -26,12 +27,19 @@ export default function GameInProgress() {
   const [score2, setScore2] = useState('')
 
   const [scoreModalOpen, setScoreModalOpen] = useState(false)
+  const [pickledTeam, setPickledTeam] = useState(null)
 
   // 'playing' | 'between'
   const [phase, setPhase] = useState('playing')
   const [proposedLineup, setProposedLineup] = useState(null)
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
+
+  useEffect(() => {
+    if (!pickledTeam) return
+    const t = setTimeout(() => setPickledTeam(null), 2500)
+    return () => clearTimeout(t)
+  }, [pickledTeam])
 
   useEffect(() => {
     const loadSession = fetch(`/api/sessions/${sessionId}`).then((r) => {
@@ -150,11 +158,7 @@ export default function GameInProgress() {
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
         <p className="font-mono text-retro-pink text-center" role="alert">{error}</p>
       </div>
-    ) : (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
-      </div>
-    )
+    ) : <LoadingScreen />
   }
 
   if (phase === 'between' && proposedLineup) {
@@ -187,11 +191,7 @@ export default function GameInProgress() {
   }
 
   if (!currentGame) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="font-mono text-retro-cyan animate-pulse">Loading...</p>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   const scoreError = validateScore(score1, score2)
@@ -283,6 +283,23 @@ export default function GameInProgress() {
           Stop Playing
         </button>
       </div>
+      {pickledTeam && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-retro-dark/95"
+          onClick={() => setPickledTeam(null)}
+        >
+          <p className="font-mono text-retro-green/50 text-xs tracking-[0.4em] mb-6">
+            {pickledTeam.map(p => p.name).join(' & ')}
+          </p>
+          <h1 className="font-display text-7xl tracking-widest text-retro-green" style={{ textShadow: '0 0 30px rgba(0,255,136,0.5)' }}>
+            PICKLED!
+          </h1>
+          <p className="font-mono text-retro-cream/30 text-xs mt-12 tracking-widest animate-pulse">
+            tap to continue
+          </p>
+        </div>
+      )}
+
       {scoreModalOpen && (
         <ScoreModal
           team1={team1}
@@ -293,6 +310,8 @@ export default function GameInProgress() {
             setScore1(s1)
             setScore2(s2)
             setScoreModalOpen(false)
+            if (parseInt(s1) === 0) setPickledTeam(team1)
+            else if (parseInt(s2) === 0) setPickledTeam(team2)
           }}
           onClose={() => setScoreModalOpen(false)}
         />
