@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
+import AvatarPicker from '../components/AvatarPicker'
+import PlayerCard from '../components/PlayerCard'
+import VsPreview from '../components/VsPreview'
+import { AVATAR_GALLERY } from '../data/avatars'
 
 export default function SessionSetup() {
   const navigate = useNavigate()
@@ -12,7 +16,9 @@ export default function SessionSetup() {
   const [allPlayers, setAllPlayers] = useState([])
   const [selected, setSelected] = useState([])
   const [newName, setNewName] = useState('')
+  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
   const [error, setError] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   useEffect(() => {
     fetch('/api/players')
@@ -26,6 +32,15 @@ export default function SessionSetup() {
         setError(err.message)
       })
   }, [])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    function onKey(e) {
+      if (e.key === 'Escape') setShowCreateModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCreateModal])
 
   function togglePlayer(player) {
     setSelected((prev) => {
@@ -42,7 +57,7 @@ export default function SessionSetup() {
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), avatar_id: newAvatarId }),
       })
       const player = await res.json()
       if (!res.ok) throw new Error(player.error ?? 'Failed to add player')
@@ -52,6 +67,8 @@ export default function SessionSetup() {
         setSelected((prev) => [...prev, player])
       }
       setNewName('')
+      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
+      setShowCreateModal(false)
     } catch (err) {
       logError(err, { component: 'SessionSetup', action: 'addPlayer' })
       setError(err.message)
@@ -84,7 +101,7 @@ export default function SessionSetup() {
         to="/"
         className="font-mono text-retro-cyan/70 hover:text-retro-cyan text-xs tracking-widest self-start"
       >
-        &larr; Back
+        &larr; Main Menu
       </Link>
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
@@ -96,53 +113,45 @@ export default function SessionSetup() {
         <h2 className="font-display text-4xl tracking-wider text-retro-cream">Select Players</h2>
       </div>
 
-      <section className="bg-retro-card border border-retro-green/30 p-4">
-        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">Create New Player</h3>
-        <form onSubmit={addNewPlayer} className="flex gap-2">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Name"
-            className="flex-1 px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
-              text-retro-cream placeholder:text-retro-cream/40 focus:outline-none focus:border-retro-cyan"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 font-display tracking-wider bg-retro-cyan text-retro-dark
-              hover:bg-retro-cyan/90 transition-colors"
-          >
-            Add
-          </button>
-        </form>
-      </section>
-
       <section>
         <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">
           Select Players — {selected.length}/{isDuel ? '2' : '4+'}
         </h3>
-        <ul className="flex flex-col gap-2">
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex flex-col items-center justify-center gap-2 p-3 border-2 border-dashed
+              border-retro-cream/30 text-retro-cream/60 hover:border-retro-cyan/50 hover:text-retro-cyan
+              transition-all rounded aspect-square"
+          >
+            <span className="text-2xl">+</span>
+            <span className="font-mono text-xs">New Player</span>
+          </button>
           {allPlayers.map((player) => {
             const isSelected = selected.find((p) => p.id === player.id)
             const isDisabled = isDuel && !isSelected && selected.length >= 2
             return (
-              <li key={player.id}>
-                <button
-                  onClick={() => togglePlayer(player)}
-                  disabled={isDisabled}
-                  className={`w-full text-left px-4 py-3 font-mono border-2 transition-all ${
-                    isSelected
-                      ? 'bg-retro-green/15 border-retro-green text-retro-green shadow-retro-glow'
-                      : isDisabled
-                      ? 'bg-retro-card border-retro-cream/10 text-retro-cream/30 cursor-not-allowed'
-                      : 'bg-retro-card border-retro-cream/20 text-retro-cream/80 hover:border-retro-cyan/50'
-                  }`}
-                >
-                  {player.name}
-                </button>
-              </li>
+              <button
+                key={player.id}
+                onClick={() => !isDisabled && togglePlayer(player)}
+                disabled={isDisabled}
+                className={`p-0 border-2 transition-all rounded overflow-hidden aspect-square ${
+                  isSelected
+                    ? 'bg-retro-green/15 border-retro-green shadow-retro-glow'
+                    : isDisabled
+                    ? 'bg-retro-card border-retro-cream/10 cursor-not-allowed opacity-60'
+                    : 'bg-retro-card border-retro-cream/20 hover:border-retro-cyan/50'
+                }`}
+              >
+                <PlayerCard player={player} />
+              </button>
             )
           })}
-        </ul>
+        </div>
+        {ready && selected.length > 0 && (
+          <VsPreview selected={selected} isDuel={isDuel} className="mt-6" />
+        )}
       </section>
 
       <button
@@ -155,6 +164,49 @@ export default function SessionSetup() {
       >
         {ready ? 'Start Game' : `Need ${needed} more`}
       </button>
+
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 bg-retro-dark/90 flex items-center justify-center px-4 z-50"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-retro-card border-2 border-retro-cyan/30 p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest">Create New Player</h3>
+            <form onSubmit={addNewPlayer} className="flex flex-col gap-4">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Name"
+                className="w-full px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
+                  text-retro-cream placeholder:text-retro-cream/40 focus:outline-none focus:border-retro-cyan"
+              />
+              <div>
+                <p className="font-mono text-retro-cream/40 text-xs tracking-widest mb-2">Pick avatar</p>
+                <AvatarPicker selectedId={newAvatarId} onSelect={setNewAvatarId} />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="px-4 py-2 font-display tracking-wider bg-retro-cyan text-retro-dark
+                    hover:bg-retro-cyan/90 transition-colors"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 font-mono text-retro-cream/60 hover:text-retro-cream text-xs tracking-widest"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

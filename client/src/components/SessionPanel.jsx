@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import AvatarDisplay from './AvatarDisplay'
 
 const SCORE_RE = /^\d+$/
 
@@ -225,8 +226,13 @@ function GameRow({ game, onSaved }) {
 function TeamLine({ players, accent }) {
   const color = accent === 'cyan' ? 'text-retro-cyan/70' : 'text-retro-green/70'
   return (
-    <p className={`font-mono text-xs ${color}`}>
-      {players.map((p) => p.name).join(' & ')}
-    </p>
+    <div className={`flex items-center gap-2 font-mono text-xs ${color}`}>
+      <div className="flex -space-x-1">
+        {players.map((p) => (
+          <AvatarDisplay key={p.id} player={p} size={20} className="ring-1 ring-retro-dark" />
+        ))}
+      </div>
+      <span>{players.map((p) => p.name).join(' & ')}</span>
+    </div>
   )
 }

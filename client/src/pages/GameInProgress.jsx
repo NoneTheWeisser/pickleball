@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
+import AvatarDisplay from '../components/AvatarDisplay'
+import ArcadeMatchup from '../components/ArcadeMatchup'
 import { logError } from '../lib/logError.js'
 import LoadingScreen from '../components/LoadingScreen'
 
@@ -16,6 +18,27 @@ function validateScore(s1, s2) {
   if (winner < 11) return 'Winning score must be at least 11'
   if (winner - loser < 2) return 'Must win by 2'
   return null
+}
+
+function GameClock({ startedAt }) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const tick = () => setElapsed(Math.floor((Date.now() - new Date(startedAt)) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  const m = Math.floor(elapsed / 60)
+  const s = elapsed % 60
+  const str = m >= 60
+    ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`
+  return (
+    <div className="bg-retro-card border-2 border-retro-gold/40 p-4 flex flex-col items-center gap-1">
+      <p className="font-mono text-retro-gold/70 text-[10px] tracking-[0.3em] uppercase">Game Clock</p>
+      <span className="font-mono text-retro-gold text-2xl tabular-nums tracking-wider">{str}</span>
+    </div>
+  )
 }
 
 export default function GameInProgress() {
@@ -186,6 +209,12 @@ export default function GameInProgress() {
         >
           Stop Playing
         </button>
+        <Link
+          to="/"
+          className="font-mono text-retro-cream/30 text-xs tracking-[0.3em] hover:text-retro-cream/60 transition-colors text-center"
+        >
+          &larr; Main Menu
+        </Link>
       </div>
     )
   }
@@ -236,18 +265,25 @@ export default function GameInProgress() {
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
-      <section className="flex flex-col gap-4">
-        <TeamCard label="Team 1" players={team1} accent="green" />
-        <div className="text-center font-mono text-retro-pink text-sm tracking-widest">vs</div>
-        <TeamCard label="Team 2" players={team2} accent="cyan" />
+      <section className="overflow-hidden">
+        <ArcadeMatchup team1={team1} team2={team2} animate />
       </section>
 
       {sitting.length > 0 && (
         <section className="bg-retro-card border border-retro-cream/10 p-3">
-          <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-1">Bench</h3>
-          <p className="font-mono text-retro-cream/80 text-sm">{sitting.map((p) => p.name).join(', ')}</p>
+          <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-2">Bench</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {sitting.map((p) => (
+              <div key={p.id} className="flex items-center gap-2">
+                <AvatarDisplay player={p} size={28} />
+                <span className="font-mono text-retro-cream/80 text-sm">{p.name}</span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
+
+      <GameClock startedAt={currentGame.started_at} />
 
       <button
         onClick={() => setScoreModalOpen(true)}
@@ -282,6 +318,12 @@ export default function GameInProgress() {
         >
           Stop Playing
         </button>
+        <Link
+          to="/"
+          className="font-mono text-retro-cream/30 text-xs tracking-[0.3em] hover:text-retro-cream/60 transition-colors text-center"
+        >
+          &larr; Main Menu
+        </Link>
       </div>
       {pickledTeam && (
         <div
@@ -409,19 +451,6 @@ function ScoreModal({ team1, team2, initialScore1, initialScore2, onConfirm, onC
           Cancel
         </button>
       </div>
-    </div>
-  )
-}
-
-function TeamCard({ label, players, accent = 'green' }) {
-  const borderColor = accent === 'cyan' ? 'border-retro-cyan/40' : 'border-retro-green/40'
-  const textColor = accent === 'cyan' ? 'text-retro-cyan' : 'text-retro-green'
-  return (
-    <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
-      <p className={`font-mono text-xs tracking-widest ${textColor} mb-2`}>{label}</p>
-      <p className="font-display text-xl tracking-wide text-retro-cream">
-        {players.map((p) => p.name).join(' & ')}
-      </p>
     </div>
   )
 }

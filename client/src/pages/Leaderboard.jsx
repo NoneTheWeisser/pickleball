@@ -60,7 +60,7 @@ export default function Leaderboard() {
           onClick={() => navigate('/')}
           className="font-mono text-retro-cyan/80 text-sm tracking-wider hover:text-retro-cyan"
         >
-          ← Back
+          ← Main Menu
         </button>
       </div>
     )
@@ -75,19 +75,19 @@ export default function Leaderboard() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
-      <div className="flex items-start gap-4">
-        <button
-          onClick={() => navigate('/')}
-          className="font-mono text-retro-cyan/80 text-sm tracking-wider hover:text-retro-cyan mt-1"
-        >
-          ←
-        </button>
+      <div className="flex items-start justify-between">
         <div>
           <p className="font-mono text-retro-cyan text-xs tracking-[0.3em] mb-1">ALL-TIME</p>
           <h1 className="font-display text-5xl tracking-widest text-retro-cream uppercase">
             High Scores
           </h1>
         </div>
+        <button
+          onClick={() => navigate('/')}
+          className="font-mono text-retro-cyan/80 text-sm tracking-wider hover:text-retro-cyan mt-1"
+        >
+          ← Main Menu
+        </button>
       </div>
 
       <div className="flex border-b border-retro-cream/10">
