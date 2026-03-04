@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
+import AvatarPicker from '../components/AvatarPicker'
+import { AVATAR_GALLERY } from '../data/avatars'
 
 export default function SessionSetup() {
   const navigate = useNavigate()
@@ -12,6 +14,7 @@ export default function SessionSetup() {
   const [allPlayers, setAllPlayers] = useState([])
   const [selected, setSelected] = useState([])
   const [newName, setNewName] = useState('')
+  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function SessionSetup() {
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), avatar_id: newAvatarId }),
       })
       const player = await res.json()
       if (!res.ok) throw new Error(player.error ?? 'Failed to add player')
@@ -52,6 +55,7 @@ export default function SessionSetup() {
         setSelected((prev) => [...prev, player])
       }
       setNewName('')
+      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
     } catch (err) {
       logError(err, { component: 'SessionSetup', action: 'addPlayer' })
       setError(err.message)
@@ -96,20 +100,24 @@ export default function SessionSetup() {
         <h2 className="font-display text-4xl tracking-wider text-retro-cream">Select Players</h2>
       </div>
 
-      <section className="bg-retro-card border border-retro-green/30 p-4">
-        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">Create New Player</h3>
-        <form onSubmit={addNewPlayer} className="flex gap-2">
+      <section className="bg-retro-card border border-retro-green/30 p-4 flex flex-col gap-4">
+        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest">Create New Player</h3>
+        <form onSubmit={addNewPlayer} className="flex flex-col gap-4">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Name"
-            className="flex-1 px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
+            className="w-full px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
               text-retro-cream placeholder:text-retro-cream/40 focus:outline-none focus:border-retro-cyan"
           />
+          <div>
+            <p className="font-mono text-retro-cream/40 text-xs tracking-widest mb-2">Pick avatar</p>
+            <AvatarPicker selectedId={newAvatarId} onSelect={setNewAvatarId} />
+          </div>
           <button
             type="submit"
             className="px-4 py-2 font-display tracking-wider bg-retro-cyan text-retro-dark
-              hover:bg-retro-cyan/90 transition-colors"
+              hover:bg-retro-cyan/90 transition-colors self-start"
           >
             Add
           </button>

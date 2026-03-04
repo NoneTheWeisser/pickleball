@@ -20,23 +20,26 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // POST /api/players
 router.post('/', asyncHandler(async (req, res) => {
-  const { name } = req.body
+  const { name, avatar_id } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' })
   const { rows } = await pool.query(
-    'INSERT INTO players (name) VALUES ($1) RETURNING *',
-    [name]
+    'INSERT INTO players (name, avatar_id) VALUES ($1, $2) RETURNING *',
+    [name.trim(), avatar_id || null]
   )
   res.status(201).json(rows[0])
 }))
 
-// PATCH /api/players/:id — edit name
+// PATCH /api/players/:id — edit name and/or avatar_id
 router.patch('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params
-  const { name } = req.body
+  const { name, avatar_id } = req.body
   if (!name?.trim()) return res.status(400).json({ error: 'Name is required' })
-  const { rows: [player] } = await pool.query(
-    'UPDATE players SET name = $1 WHERE id = $2 RETURNING *',
-    [name.trim(), id]
-  )
+  const setAvatar = 'avatar_id' in req.body
+  const query = setAvatar
+    ? 'UPDATE players SET name = $1, avatar_id = $2 WHERE id = $3 RETURNING *'
+    : 'UPDATE players SET name = $1 WHERE id = $2 RETURNING *'
+  const values = setAvatar ? [name.trim(), avatar_id || null, id] : [name.trim(), id]
+  const { rows: [player] } = await pool.query(query, values)
   if (!player) return res.status(404).json({ error: 'Player not found' })
   res.json(player)
 }))

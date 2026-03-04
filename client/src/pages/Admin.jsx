@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import AvatarDisplay from '../components/AvatarDisplay'
+import AvatarPicker from '../components/AvatarPicker'
 
 export default function Admin() {
   const [players, setPlayers] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
+  const [editAvatarId, setEditAvatarId] = useState(null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [error, setError] = useState(null)
   const [sessions, setSessions] = useState([])
@@ -34,12 +37,14 @@ export default function Admin() {
   function startEdit(player) {
     setEditingId(player.id)
     setEditName(player.name)
+    setEditAvatarId(player.avatar_id ?? 'avatar_01')
     setError(null)
   }
 
   function cancelEdit() {
     setEditingId(null)
     setEditName('')
+    setEditAvatarId(null)
     setError(null)
   }
 
@@ -47,13 +52,14 @@ export default function Admin() {
     const res = await fetch(`/api/players/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editName }),
+      body: JSON.stringify({ name: editName, avatar_id: editAvatarId }),
     })
     const data = await res.json()
     if (!res.ok) return setError(data.error)
     setPlayers((prev) => prev.map((p) => (p.id === id ? data : p)))
     setEditingId(null)
     setEditName('')
+    setEditAvatarId(null)
   }
 
   async function softDelete(id) {
@@ -118,33 +124,40 @@ export default function Admin() {
             className="flex items-center gap-2 bg-retro-card border border-retro-cream/10 px-4 py-3"
           >
             {editingId === player.id ? (
-              <>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit(player.id)
-                    if (e.key === 'Escape') cancelEdit()
-                  }}
-                  autoFocus
-                  className="flex-1 px-2 py-0.5 font-mono text-sm bg-retro-dark border border-retro-cyan/50
-                    text-retro-cream focus:outline-none focus:border-retro-cyan"
-                />
-                <button
-                  onClick={() => saveEdit(player.id)}
-                  className="font-mono text-xs text-retro-green hover:text-retro-green/70 transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  className="font-mono text-xs text-retro-cream/40 hover:text-retro-cream/70 transition-colors"
-                >
-                  Cancel
-                </button>
-              </>
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit(player.id)
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                    autoFocus
+                    className="flex-1 px-2 py-0.5 font-mono text-sm bg-retro-dark border border-retro-cyan/50
+                      text-retro-cream focus:outline-none focus:border-retro-cyan"
+                  />
+                  <button
+                    onClick={() => saveEdit(player.id)}
+                    className="font-mono text-xs text-retro-green hover:text-retro-green/70 transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="font-mono text-xs text-retro-cream/40 hover:text-retro-cream/70 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div>
+                  <p className="font-mono text-retro-cream/40 text-xs mb-1">Avatar</p>
+                  <AvatarPicker selectedId={editAvatarId} onSelect={setEditAvatarId} />
+                </div>
+              </div>
             ) : (
               <>
+                <AvatarDisplay player={player} size={32} />
                 <span className="flex-1 font-mono text-sm text-retro-cream">{player.name}</span>
                 <button
                   onClick={() => startEdit(player)}

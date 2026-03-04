@@ -14,6 +14,7 @@ Schema lives at `server/src/db/schema.sql`.
 |--------|------|-------|
 | id | SERIAL PK | |
 | name | TEXT | |
+| avatar_id | TEXT | optional; references client-side avatar gallery |
 | created_at | TIMESTAMPTZ | default NOW() |
 | deleted_at | TIMESTAMPTZ | null = active; set = soft-deleted |
 

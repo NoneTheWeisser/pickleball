@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { logError } from '../lib/logError.js'
+import AvatarPicker from './AvatarPicker'
+import { AVATAR_GALLERY } from '../data/avatars'
 
 /**
  * Props:
@@ -17,6 +19,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   const [showAddPlayer, setShowAddPlayer] = useState(false)
   const [allPlayers, setAllPlayers] = useState(null)
   const [newName, setNewName] = useState('')
+  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
   const [error, setError] = useState(null)
 
   function handleTap(player, slot) {
@@ -96,7 +99,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       const res1 = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), avatar_id: newAvatarId }),
       })
       const player = await res1.json()
       if (!res1.ok) throw new Error(player.error ?? 'Failed to create player')
@@ -113,6 +116,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       setError(null)
       setBench((prev) => [...prev, player])
       setNewName('')
+      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
       setShowAddPlayer(false)
       onAddPlayer(player)
     } catch (err) {
@@ -183,17 +187,21 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
         <div className="bg-retro-card border border-retro-cyan/30 p-4 flex flex-col gap-3">
           <h3 className="font-mono text-retro-cyan text-xs tracking-widest">Add Player</h3>
 
-          <form onSubmit={addNewPlayer} className="flex gap-2">
+          <form onSubmit={addNewPlayer} className="flex flex-col gap-3">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="New player name"
-              className="flex-1 px-3 py-1.5 font-mono text-sm bg-retro-dark border border-retro-cyan/30
+              className="w-full px-3 py-1.5 font-mono text-sm bg-retro-dark border border-retro-cyan/30
                 text-retro-cream placeholder:text-retro-cream/30 focus:outline-none focus:border-retro-cyan"
             />
+            <div>
+              <p className="font-mono text-retro-cream/40 text-xs mb-1">Pick avatar</p>
+              <AvatarPicker selectedId={newAvatarId} onSelect={setNewAvatarId} />
+            </div>
             <button
               type="submit"
-              className="px-3 py-1.5 font-mono text-xs bg-retro-cyan text-retro-dark hover:bg-retro-cyan/80 transition-colors"
+              className="px-3 py-1.5 font-mono text-xs bg-retro-cyan text-retro-dark hover:bg-retro-cyan/80 transition-colors self-start"
             >
               Add
             </button>
