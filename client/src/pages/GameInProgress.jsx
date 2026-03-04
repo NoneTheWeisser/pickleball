@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
+import AvatarDisplay from '../components/AvatarDisplay'
 import { logError } from '../lib/logError.js'
 import LoadingScreen from '../components/LoadingScreen'
 
@@ -271,8 +272,15 @@ export default function GameInProgress() {
 
       {sitting.length > 0 && (
         <section className="bg-retro-card border border-retro-cream/10 p-3">
-          <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-1">Bench</h3>
-          <p className="font-mono text-retro-cream/80 text-sm">{sitting.map((p) => p.name).join(', ')}</p>
+          <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-2">Bench</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {sitting.map((p) => (
+              <div key={p.id} className="flex items-center gap-2">
+                <AvatarDisplay player={p} size={28} />
+                <span className="font-mono text-retro-cream/80 text-sm">{p.name}</span>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -454,9 +462,16 @@ function TeamCard({ label, players, accent = 'green' }) {
   return (
     <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
       <p className={`font-mono text-xs tracking-widest ${textColor} mb-2`}>{label}</p>
-      <p className="font-display text-xl tracking-wide text-retro-cream">
-        {players.map((p) => p.name).join(' & ')}
-      </p>
+      <div className="flex items-center gap-3">
+        <div className="flex -space-x-2">
+          {players.map((p) => (
+            <AvatarDisplay key={p.id} player={p} size={36} className="ring-2 ring-retro-dark" />
+          ))}
+        </div>
+        <p className="font-display text-xl tracking-wide text-retro-cream">
+          {players.map((p) => p.name).join(' & ')}
+        </p>
+      </div>
     </div>
   )
 }

@@ -37,7 +37,7 @@ export default function Admin() {
   function startEdit(player) {
     setEditingId(player.id)
     setEditName(player.name)
-    setEditAvatarId(player.avatar_id ?? 'avatar_01')
+    setEditAvatarId(player.avatar_id ?? 'avatar_02')
     setError(null)
   }
 

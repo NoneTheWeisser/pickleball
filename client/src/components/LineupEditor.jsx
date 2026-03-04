@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { logError } from '../lib/logError.js'
 import AvatarPicker from './AvatarPicker'
+import AvatarDisplay from './AvatarDisplay'
 import { AVATAR_GALLERY } from '../data/avatars'
 
 /**
@@ -19,7 +20,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   const [showAddPlayer, setShowAddPlayer] = useState(false)
   const [allPlayers, setAllPlayers] = useState(null)
   const [newName, setNewName] = useState('')
-  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
+  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
   const [error, setError] = useState(null)
 
   function handleTap(player, slot) {
@@ -116,7 +117,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       setError(null)
       setBench((prev) => [...prev, player])
       setNewName('')
-      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
+      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
       setShowAddPlayer(false)
       onAddPlayer(player)
     } catch (err) {
@@ -215,9 +216,10 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
                   <button
                     key={p.id}
                     onClick={() => addExistingPlayer(p)}
-                    className="text-left px-3 py-1.5 font-mono text-sm text-retro-cream/80
+                    className="flex items-center gap-2 text-left px-3 py-1.5 font-mono text-sm text-retro-cream/80
                       hover:text-retro-cream hover:bg-retro-cream/5 transition-colors"
                   >
+                    <AvatarDisplay player={p} size={24} />
                     {p.name}
                   </button>
                 ))}
@@ -272,7 +274,7 @@ function TeamSlot({ label, players, slot, selected, onTap, accent }) {
 }
 
 function PlayerChip({ player, slot, isSelected, onTap, accent }) {
-  const base = 'px-3 py-1.5 font-display tracking-wide text-sm border-2 transition-all cursor-pointer'
+  const base = 'px-3 py-1.5 font-display tracking-wide text-sm border-2 transition-all cursor-pointer flex items-center gap-2'
   const styles = {
     green: isSelected
       ? 'bg-retro-green text-retro-dark border-retro-green shadow-retro-glow'
@@ -287,6 +289,7 @@ function PlayerChip({ player, slot, isSelected, onTap, accent }) {
 
   return (
     <button className={`${base} ${styles[accent]}`} onClick={() => onTap(player, slot)}>
+      <AvatarDisplay player={player} size={24} />
       {player.name}
     </button>
   )

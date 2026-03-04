@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
 import AvatarPicker from '../components/AvatarPicker'
+import AvatarDisplay from '../components/AvatarDisplay'
+import VsPreview from '../components/VsPreview'
 import { AVATAR_GALLERY } from '../data/avatars'
 
 export default function SessionSetup() {
@@ -14,7 +16,7 @@ export default function SessionSetup() {
   const [allPlayers, setAllPlayers] = useState([])
   const [selected, setSelected] = useState([])
   const [newName, setNewName] = useState('')
-  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
+  const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function SessionSetup() {
         setSelected((prev) => [...prev, player])
       }
       setNewName('')
-      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_01')
+      setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
     } catch (err) {
       logError(err, { component: 'SessionSetup', action: 'addPlayer' })
       setError(err.message)
@@ -128,29 +130,32 @@ export default function SessionSetup() {
         <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">
           Select Players — {selected.length}/{isDuel ? '2' : '4+'}
         </h3>
-        <ul className="flex flex-col gap-2">
+        <div className="grid grid-cols-3 gap-3">
           {allPlayers.map((player) => {
             const isSelected = selected.find((p) => p.id === player.id)
             const isDisabled = isDuel && !isSelected && selected.length >= 2
             return (
-              <li key={player.id}>
-                <button
-                  onClick={() => togglePlayer(player)}
-                  disabled={isDisabled}
-                  className={`w-full text-left px-4 py-3 font-mono border-2 transition-all ${
-                    isSelected
-                      ? 'bg-retro-green/15 border-retro-green text-retro-green shadow-retro-glow'
-                      : isDisabled
-                      ? 'bg-retro-card border-retro-cream/10 text-retro-cream/30 cursor-not-allowed'
-                      : 'bg-retro-card border-retro-cream/20 text-retro-cream/80 hover:border-retro-cyan/50'
-                  }`}
-                >
-                  {player.name}
-                </button>
-              </li>
+              <button
+                key={player.id}
+                onClick={() => !isDisabled && togglePlayer(player)}
+                disabled={isDisabled}
+                className={`flex flex-col items-center gap-2 p-3 border-2 transition-all rounded ${
+                  isSelected
+                    ? 'bg-retro-green/15 border-retro-green shadow-retro-glow'
+                    : isDisabled
+                    ? 'bg-retro-card border-retro-cream/10 text-retro-cream/30 cursor-not-allowed'
+                    : 'bg-retro-card border-retro-cream/20 text-retro-cream/80 hover:border-retro-cyan/50'
+                }`}
+              >
+                <AvatarDisplay player={player} size={56} />
+                <span className="font-mono text-xs truncate w-full text-center">{player.name}</span>
+              </button>
             )
           })}
-        </ul>
+        </div>
+        {ready && selected.length > 0 && (
+          <VsPreview selected={selected} isDuel={isDuel} className="mt-6" />
+        )}
       </section>
 
       <button
