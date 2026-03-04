@@ -18,6 +18,27 @@ function validateScore(s1, s2) {
   return null
 }
 
+function GameClock({ startedAt }) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const tick = () => setElapsed(Math.floor((Date.now() - new Date(startedAt)) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  const m = Math.floor(elapsed / 60)
+  const s = elapsed % 60
+  const str = m >= 60
+    ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`
+  return (
+    <div className="bg-retro-card border-2 border-retro-gold/40 p-4 flex flex-col items-center gap-1">
+      <p className="font-mono text-retro-gold/70 text-[10px] tracking-[0.3em] uppercase">Game Clock</p>
+      <span className="font-mono text-retro-gold text-2xl tabular-nums tracking-wider">{str}</span>
+    </div>
+  )
+}
+
 export default function GameInProgress() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
@@ -254,6 +275,8 @@ export default function GameInProgress() {
           <p className="font-mono text-retro-cream/80 text-sm">{sitting.map((p) => p.name).join(', ')}</p>
         </section>
       )}
+
+      <GameClock startedAt={currentGame.started_at} />
 
       <button
         onClick={() => setScoreModalOpen(true)}
