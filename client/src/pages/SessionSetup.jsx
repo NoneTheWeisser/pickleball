@@ -18,6 +18,7 @@ export default function SessionSetup() {
   const [newName, setNewName] = useState('')
   const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
   const [error, setError] = useState(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   useEffect(() => {
     fetch('/api/players')
@@ -31,6 +32,15 @@ export default function SessionSetup() {
         setError(err.message)
       })
   }, [])
+
+  useEffect(() => {
+    if (!showCreateModal) return
+    function onKey(e) {
+      if (e.key === 'Escape') setShowCreateModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCreateModal])
 
   function togglePlayer(player) {
     setSelected((prev) => {
@@ -58,6 +68,7 @@ export default function SessionSetup() {
       }
       setNewName('')
       setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
+      setShowCreateModal(false)
     } catch (err) {
       logError(err, { component: 'SessionSetup', action: 'addPlayer' })
       setError(err.message)
@@ -102,35 +113,21 @@ export default function SessionSetup() {
         <h2 className="font-display text-4xl tracking-wider text-retro-cream">Select Players</h2>
       </div>
 
-      <section className="bg-retro-card border border-retro-green/30 p-4 flex flex-col gap-4">
-        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest">Create New Player</h3>
-        <form onSubmit={addNewPlayer} className="flex flex-col gap-4">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Name"
-            className="w-full px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
-              text-retro-cream placeholder:text-retro-cream/40 focus:outline-none focus:border-retro-cyan"
-          />
-          <div>
-            <p className="font-mono text-retro-cream/40 text-xs tracking-widest mb-2">Pick avatar</p>
-            <AvatarPicker selectedId={newAvatarId} onSelect={setNewAvatarId} />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 font-display tracking-wider bg-retro-cyan text-retro-dark
-              hover:bg-retro-cyan/90 transition-colors self-start"
-          >
-            Add
-          </button>
-        </form>
-      </section>
-
       <section>
         <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">
           Select Players — {selected.length}/{isDuel ? '2' : '4+'}
         </h3>
         <div className="grid grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex flex-col items-center justify-center gap-2 p-3 border-2 border-dashed
+              border-retro-cream/30 text-retro-cream/60 hover:border-retro-cyan/50 hover:text-retro-cyan
+              transition-all rounded min-h-[96px]"
+          >
+            <span className="text-2xl">+</span>
+            <span className="font-mono text-xs">New Player</span>
+          </button>
           {allPlayers.map((player) => {
             const isSelected = selected.find((p) => p.id === player.id)
             const isDisabled = isDuel && !isSelected && selected.length >= 2
@@ -168,6 +165,49 @@ export default function SessionSetup() {
       >
         {ready ? 'Start Game' : `Need ${needed} more`}
       </button>
+
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 bg-retro-dark/90 flex items-center justify-center px-4 z-50"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-retro-card border-2 border-retro-cyan/30 p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest">Create New Player</h3>
+            <form onSubmit={addNewPlayer} className="flex flex-col gap-4">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Name"
+                className="w-full px-3 py-2 font-mono bg-retro-dark border-2 border-retro-cyan/30
+                  text-retro-cream placeholder:text-retro-cream/40 focus:outline-none focus:border-retro-cyan"
+              />
+              <div>
+                <p className="font-mono text-retro-cream/40 text-xs tracking-widest mb-2">Pick avatar</p>
+                <AvatarPicker selectedId={newAvatarId} onSelect={setNewAvatarId} />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="px-4 py-2 font-display tracking-wider bg-retro-cyan text-retro-dark
+                    hover:bg-retro-cyan/90 transition-colors"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 font-mono text-retro-cream/60 hover:text-retro-cream text-xs tracking-widest"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
