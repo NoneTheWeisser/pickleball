@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { logError } from '../lib/logError.js'
 import AvatarPicker from './AvatarPicker'
 import AvatarDisplay from './AvatarDisplay'
+import ArcadeMatchup from './ArcadeMatchup'
+import PlayerCard from './PlayerCard'
 import { AVATAR_GALLERY } from '../data/avatars'
 
 /**
@@ -145,25 +147,12 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
 
-      <div className="flex flex-col gap-3">
-        <TeamSlot
-          label="Team 1"
-          players={team1}
-          slot="team1"
-          selected={selected}
-          onTap={handleTap}
-          accent="green"
-        />
-        <div className="text-center font-mono text-retro-pink text-xs tracking-widest">vs</div>
-        <TeamSlot
-          label="Team 2"
-          players={team2}
-          slot="team2"
-          selected={selected}
-          onTap={handleTap}
-          accent="cyan"
-        />
-      </div>
+      <ArcadeMatchup
+        team1={team1}
+        team2={team2}
+        onPlayerTap={handleTap}
+        selectedPlayerId={selected?.player?.id}
+      />
 
       {(bench.length > 0 || true) && (
         <div>
@@ -256,48 +245,24 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   )
 }
 
-function TeamSlot({ label, players, slot, selected, onTap, accent }) {
-  const borderColor = accent === 'cyan' ? 'border-retro-cyan/40' : 'border-retro-green/40'
-  const labelColor = accent === 'cyan' ? 'text-retro-cyan' : 'text-retro-green'
-
-  return (
-    <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
-      <p className={`font-mono text-xs tracking-widest ${labelColor} mb-3`}>{label}</p>
-      <div className="flex gap-2 flex-wrap">
-        {players.filter((p) => p?.id).map((player) => (
-          <PlayerChip
-            key={player.id}
-            player={player}
-            slot={slot}
-            isSelected={selected?.player.id === player.id}
-            onTap={onTap}
-            accent={accent}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function PlayerChip({ player, slot, isSelected, onTap, accent }) {
   if (!player?.id) return null
-  const base = 'px-3 py-1.5 font-display tracking-wide text-sm border-2 transition-all cursor-pointer flex items-center gap-2'
+  const base = 'w-20 h-20 p-0 border-2 transition-all cursor-pointer overflow-hidden rounded flex-shrink-0'
   const styles = {
     green: isSelected
-      ? 'bg-retro-green text-retro-dark border-retro-green shadow-retro-glow'
-      : 'bg-retro-green/10 text-retro-green border-retro-green/50 hover:border-retro-green',
+      ? 'border-retro-green shadow-retro-glow ring-2 ring-retro-green'
+      : 'border-retro-green/50 hover:border-retro-green bg-retro-card',
     cyan: isSelected
-      ? 'bg-retro-cyan text-retro-dark border-retro-cyan'
-      : 'bg-retro-cyan/10 text-retro-cyan border-retro-cyan/50 hover:border-retro-cyan',
+      ? 'border-retro-cyan ring-2 ring-retro-cyan'
+      : 'border-retro-cyan/50 hover:border-retro-cyan bg-retro-card',
     cream: isSelected
-      ? 'bg-retro-cream text-retro-dark border-retro-cream'
-      : 'bg-retro-cream/5 text-retro-cream/80 border-retro-cream/20 hover:border-retro-cream/50',
+      ? 'border-retro-cream ring-2 ring-retro-cream'
+      : 'border-retro-cream/30 hover:border-retro-cream/50 bg-retro-card',
   }
 
   return (
     <button className={`${base} ${styles[accent]}`} onClick={() => onTap(player, slot)}>
-      <AvatarDisplay player={player} size={24} />
-      {player.name}
+      <PlayerCard player={player} className="w-full h-full" />
     </button>
   )
 }

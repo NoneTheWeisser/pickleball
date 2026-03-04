@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
 import AvatarPicker from '../components/AvatarPicker'
-import AvatarDisplay from '../components/AvatarDisplay'
+import PlayerCard from '../components/PlayerCard'
 import VsPreview from '../components/VsPreview'
 import { AVATAR_GALLERY } from '../data/avatars'
 
@@ -123,7 +123,7 @@ export default function SessionSetup() {
             onClick={() => setShowCreateModal(true)}
             className="flex flex-col items-center justify-center gap-2 p-3 border-2 border-dashed
               border-retro-cream/30 text-retro-cream/60 hover:border-retro-cyan/50 hover:text-retro-cyan
-              transition-all rounded min-h-[96px]"
+              transition-all rounded aspect-square"
           >
             <span className="text-2xl">+</span>
             <span className="font-mono text-xs">New Player</span>
@@ -136,16 +136,15 @@ export default function SessionSetup() {
                 key={player.id}
                 onClick={() => !isDisabled && togglePlayer(player)}
                 disabled={isDisabled}
-                className={`flex flex-col items-center gap-2 p-3 border-2 transition-all rounded ${
+                className={`p-0 border-2 transition-all rounded overflow-hidden aspect-square ${
                   isSelected
                     ? 'bg-retro-green/15 border-retro-green shadow-retro-glow'
                     : isDisabled
-                    ? 'bg-retro-card border-retro-cream/10 text-retro-cream/30 cursor-not-allowed'
-                    : 'bg-retro-card border-retro-cream/20 text-retro-cream/80 hover:border-retro-cyan/50'
+                    ? 'bg-retro-card border-retro-cream/10 cursor-not-allowed opacity-60'
+                    : 'bg-retro-card border-retro-cream/20 hover:border-retro-cyan/50'
                 }`}
               >
-                <AvatarDisplay player={player} size={56} />
-                <span className="font-mono text-xs truncate w-full text-center">{player.name}</span>
+                <PlayerCard player={player} />
               </button>
             )
           })}

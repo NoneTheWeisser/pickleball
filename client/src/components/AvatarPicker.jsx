@@ -1,8 +1,8 @@
 import { AVATAR_GALLERY } from '../data/avatars'
-import AvatarDisplay from './AvatarDisplay'
+import PlayerCard from './PlayerCard'
 
 /**
- * Grid of avatars for selection. Used when creating or editing a player.
+ * Grid of avatar cards for selection. Used when creating or editing a player.
  */
 export default function AvatarPicker({ selectedId, onSelect }) {
   return (
@@ -15,15 +15,15 @@ export default function AvatarPicker({ selectedId, onSelect }) {
             key={avatar.id}
             type="button"
             onClick={() => onSelect(avatar.id)}
-            className={`p-2 rounded border-2 transition-all flex items-center justify-center
+            className={`p-0 rounded border-2 transition-all overflow-hidden aspect-square
               ${isSelected
-                ? 'border-retro-green bg-retro-green/10 shadow-retro-glow'
+                ? 'border-retro-green shadow-retro-glow'
                 : 'border-retro-cream/20 hover:border-retro-cyan/50 bg-retro-card'
               }`}
             aria-pressed={isSelected}
             aria-label={`Select ${avatar.label} avatar`}
           >
-            <AvatarDisplay player={fakePlayer} size={40} />
+            <PlayerCard player={fakePlayer} hideLabel />
           </button>
         )
       })}
