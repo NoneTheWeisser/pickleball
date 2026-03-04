@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
-import AvatarDisplay from '../components/AvatarDisplay'
+import PlayerCard from '../components/PlayerCard'
 import ArcadeMatchup from '../components/ArcadeMatchup'
 import { logError } from '../lib/logError.js'
 import LoadingScreen from '../components/LoadingScreen'
@@ -272,11 +272,13 @@ export default function GameInProgress() {
       {sitting.length > 0 && (
         <section className="bg-retro-card border border-retro-cream/10 p-3">
           <h3 className="font-mono text-retro-cream/50 text-xs tracking-widest mb-2">Bench</h3>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-3 gap-3">
             {sitting.map((p) => (
-              <div key={p.id} className="flex items-center gap-2">
-                <AvatarDisplay player={p} size={28} />
-                <span className="font-mono text-retro-cream/80 text-sm">{p.name}</span>
+              <div
+                key={p.id}
+                className="p-0 border-2 border-retro-cream/20 bg-retro-card rounded overflow-hidden aspect-square"
+              >
+                <PlayerCard player={p} />
               </div>
             ))}
           </div>
