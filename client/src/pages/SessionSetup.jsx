@@ -114,9 +114,32 @@ export default function SessionSetup() {
       </div>
 
       <section>
-        <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest mb-3">
-          Select Players — {selected.length}/{isDuel ? '2' : '4+'}
-        </h3>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="font-mono text-retro-cyan/80 text-xs tracking-widest">
+            Select Players — {selected.length}/{isDuel ? '2' : '4+'}
+          </h3>
+          <div className="shrink-0">
+            {selected.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="font-mono text-xs tracking-widest text-retro-cyan/80 hover:text-retro-cyan transition-colors"
+              >
+                Clear
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSelected(isDuel ? allPlayers.slice(0, 2) : [...allPlayers])}
+                disabled={allPlayers.length === 0}
+                className="font-mono text-xs tracking-widest text-retro-cyan/80 hover:text-retro-cyan
+                  disabled:text-retro-cream/30 disabled:cursor-not-allowed transition-colors"
+              >
+                Select All
+              </button>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <button
             type="button"
