@@ -81,7 +81,7 @@ export default function Admin() {
           to="/"
           className="font-mono text-retro-cyan/70 hover:text-retro-cyan text-xs tracking-widest transition-colors"
         >
-          &larr; Back
+          &larr; Main Menu
         </Link>
       </div>
 

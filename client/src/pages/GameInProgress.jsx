@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
 import { logError } from '../lib/logError.js'
@@ -186,6 +186,12 @@ export default function GameInProgress() {
         >
           Stop Playing
         </button>
+        <Link
+          to="/"
+          className="font-mono text-retro-cream/30 text-xs tracking-[0.3em] hover:text-retro-cream/60 transition-colors text-center"
+        >
+          &larr; Main Menu
+        </Link>
       </div>
     )
   }
@@ -282,6 +288,12 @@ export default function GameInProgress() {
         >
           Stop Playing
         </button>
+        <Link
+          to="/"
+          className="font-mono text-retro-cream/30 text-xs tracking-[0.3em] hover:text-retro-cream/60 transition-colors text-center"
+        >
+          &larr; Main Menu
+        </Link>
       </div>
       {pickledTeam && (
         <div

@@ -44,7 +44,7 @@ export default function Options() {
         onClick={() => navigate('/')}
         className="font-mono text-retro-cream/30 text-xs tracking-[0.3em] hover:text-retro-cream/60 transition-colors"
       >
-        &larr; BACK
+        &larr; Main Menu
       </button>
     </div>
   )

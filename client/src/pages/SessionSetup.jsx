@@ -84,7 +84,7 @@ export default function SessionSetup() {
         to="/"
         className="font-mono text-retro-cyan/70 hover:text-retro-cyan text-xs tracking-widest self-start"
       >
-        &larr; Back
+        &larr; Main Menu
       </Link>
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
