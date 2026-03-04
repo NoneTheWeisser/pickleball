@@ -11,10 +11,14 @@ import { AVATAR_GALLERY } from '../data/avatars'
  *   onStart: (team1Ids, team2Ids) => void
  *   onAddPlayer: (player) => void  — called after late arrival is added to session
  */
+function safePlayers(arr) {
+  return Array.isArray(arr) ? arr.filter((p) => p != null) : []
+}
+
 export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }) {
-  const [team1, setTeam1] = useState(lineup.team1)
-  const [team2, setTeam2] = useState(lineup.team2)
-  const [bench, setBench] = useState(lineup.bench)
+  const [team1, setTeam1] = useState(() => safePlayers(lineup?.team1))
+  const [team2, setTeam2] = useState(() => safePlayers(lineup?.team2))
+  const [bench, setBench] = useState(() => safePlayers(lineup?.bench))
   const [selected, setSelected] = useState(null) // { player, slot: 'team1'|'team2'|'bench' }
 
   const [showAddPlayer, setShowAddPlayer] = useState(false)
@@ -41,10 +45,12 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   }
 
   function swap(playerA, slotA, playerB, slotB) {
+    if (!playerA?.id || !playerB?.id) return
     const lists = { team1: [...team1], team2: [...team2], bench: [...bench] }
 
-    const idxA = lists[slotA].findIndex((p) => p.id === playerA.id)
-    const idxB = lists[slotB].findIndex((p) => p.id === playerB.id)
+    const idxA = lists[slotA].findIndex((p) => p?.id === playerA.id)
+    const idxB = lists[slotB].findIndex((p) => p?.id === playerB.id)
+    if (idxA < 0 || idxB < 0) return
 
     lists[slotA][idxA] = playerB
     lists[slotB][idxB] = playerA
@@ -61,7 +67,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
         const players = await res.json()
         if (!res.ok) throw new Error(players.error ?? 'Failed to load players')
         // Filter out anyone already in the current lineup
-        const inSession = new Set([...team1, ...team2, ...bench].map((p) => p.id))
+        const inSession = new Set([...team1, ...team2, ...bench].filter((p) => p?.id).map((p) => p.id))
         setAllPlayers(players.filter((p) => !inSession.has(p.id)))
       } catch (err) {
         logError(err, { component: 'LineupEditor', action: 'openAddPlayer' })
@@ -258,7 +264,7 @@ function TeamSlot({ label, players, slot, selected, onTap, accent }) {
     <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
       <p className={`font-mono text-xs tracking-widest ${labelColor} mb-3`}>{label}</p>
       <div className="flex gap-2 flex-wrap">
-        {players.map((player) => (
+        {players.filter((p) => p?.id).map((player) => (
           <PlayerChip
             key={player.id}
             player={player}
@@ -274,6 +280,7 @@ function TeamSlot({ label, players, slot, selected, onTap, accent }) {
 }
 
 function PlayerChip({ player, slot, isSelected, onTap, accent }) {
+  if (!player?.id) return null
   const base = 'px-3 py-1.5 font-display tracking-wide text-sm border-2 transition-all cursor-pointer flex items-center gap-2'
   const styles = {
     green: isSelected

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import LineupEditor from '../components/LineupEditor'
 import SessionPanel, { formatSessionDate } from '../components/SessionPanel'
 import AvatarDisplay from '../components/AvatarDisplay'
+import ArcadeMatchup from '../components/ArcadeMatchup'
 import { logError } from '../lib/logError.js'
 import LoadingScreen from '../components/LoadingScreen'
 
@@ -264,10 +265,8 @@ export default function GameInProgress() {
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
-      <section className="flex flex-col gap-4">
-        <TeamCard label="Team 1" players={team1} accent="green" />
-        <div className="text-center font-mono text-retro-pink text-sm tracking-widest">vs</div>
-        <TeamCard label="Team 2" players={team2} accent="cyan" />
+      <section className="overflow-hidden">
+        <ArcadeMatchup team1={team1} team2={team2} animate />
       </section>
 
       {sitting.length > 0 && (
@@ -451,26 +450,6 @@ function ScoreModal({ team1, team2, initialScore1, initialScore2, onConfirm, onC
         >
           Cancel
         </button>
-      </div>
-    </div>
-  )
-}
-
-function TeamCard({ label, players, accent = 'green' }) {
-  const borderColor = accent === 'cyan' ? 'border-retro-cyan/40' : 'border-retro-green/40'
-  const textColor = accent === 'cyan' ? 'text-retro-cyan' : 'text-retro-green'
-  return (
-    <div className={`bg-retro-card border-2 ${borderColor} p-4`}>
-      <p className={`font-mono text-xs tracking-widest ${textColor} mb-2`}>{label}</p>
-      <div className="flex items-center gap-3">
-        <div className="flex -space-x-2">
-          {players.map((p) => (
-            <AvatarDisplay key={p.id} player={p} size={36} className="ring-2 ring-retro-dark" />
-          ))}
-        </div>
-        <p className="font-display text-xl tracking-wide text-retro-cream">
-          {players.map((p) => p.name).join(' & ')}
-        </p>
       </div>
     </div>
   )

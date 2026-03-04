@@ -14,6 +14,14 @@
   }
 }
 
+/* Respect reduced motion preference — disable animations so content stays visible */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Subtle scanline overlay for that VHS feel */
 .retro-scanlines::before {
   content: '';
