@@ -181,7 +181,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
 
       {showAddPlayer && (
         <div className="bg-retro-card border border-retro-cyan/30 p-4 flex flex-col gap-3">
-          <h3 className="font-mono text-retro-cyan text-xs tracking-widest">Add Player</h3>
+          <h3 className="font-mono text-retro-cyan text-xs tracking-widest">Create Player</h3>
 
           <form onSubmit={addNewPlayer} className="flex flex-col gap-3">
             <input
