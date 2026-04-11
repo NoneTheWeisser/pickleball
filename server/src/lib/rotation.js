@@ -5,6 +5,9 @@
  *   - Players who played the last 2 consecutive games must sit.
  *   - Players who sat the previous game have priority to play.
  *   - Fill remaining spots randomly from those who played only 1 of the last 2 games.
+ *   - If that would leave fewer than 4 on court but the session has ≥4 players,
+ *     backfill from the rest (including those who would otherwise sit) so doubles
+ *     lineups always have four IDs.
  */
 export function pickPlayers(sessionPlayers, recentGames) {
   const playerIds = sessionPlayers.map((p) => p.id)
@@ -34,7 +37,20 @@ export function pickPlayers(sessionPlayers, recentGames) {
   // Fill pool: played exactly one of the last two games
   const fill = shuffle(playedOnce.filter((id) => !mustSit.has(id)))
 
-  const court = [...priority, ...fill].slice(0, 4)
+  let court = [...priority, ...fill].slice(0, 4)
+
+  // "Must sit" can exclude too many people to fill a doubles court (e.g. 5 players
+  // after two games: three may appear in both recent games). Backfill from anyone
+  // not yet selected so we still return four on court when the session has ≥4 players.
+  if (court.length < 4 && playerIds.length >= 4) {
+    const onCourt = new Set(court)
+    const remainder = shuffle(playerIds.filter((id) => !onCourt.has(id)))
+    for (const id of remainder) {
+      if (court.length >= 4) break
+      court.push(id)
+    }
+  }
+
   return court
 }
 
