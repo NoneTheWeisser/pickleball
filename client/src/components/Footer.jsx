@@ -15,7 +15,7 @@ export default function Footer() {
         </Link>
       )}
       <span>@nonetheweisser 2026</span>
-      <span>1.0.1</span>
+      <span>1.0.2</span>
     </footer>
   )
 }
