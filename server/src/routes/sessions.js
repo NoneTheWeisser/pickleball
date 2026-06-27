@@ -156,6 +156,15 @@ router.post('/:id/next-game', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: `team1 and team2 must each have ${teamSize} player ID(s)` })
   }
 
+  const { rows: sessionPlayerRows } = await pool.query(
+    'SELECT player_id FROM session_players WHERE session_id = $1',
+    [id]
+  )
+  const sessionPlayerIds = new Set(sessionPlayerRows.map((r) => r.player_id))
+  if ([...team1, ...team2].some((pid) => !sessionPlayerIds.has(pid))) {
+    return res.status(400).json({ error: 'One or more players are not in this session' })
+  }
+
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -191,6 +200,24 @@ router.post('/:id/players', asyncHandler(async (req, res) => {
 
   const { rows: [player] } = await pool.query('SELECT * FROM players WHERE id = $1', [playerId])
   res.status(201).json(player)
+}))
+
+// DELETE /api/sessions/:id/players/:playerId — remove a player from session
+router.delete('/:id/players/:playerId', asyncHandler(async (req, res) => {
+  const { id, playerId } = req.params
+
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+
+  const { rowCount } = await pool.query(
+    'DELETE FROM session_players WHERE session_id = $1 AND player_id = $2',
+    [id, playerId]
+  )
+  if (rowCount === 0) {
+    return res.status(404).json({ error: 'Player not in session' })
+  }
+
+  res.status(204).send()
 }))
 
 // PATCH /api/sessions/:id/end

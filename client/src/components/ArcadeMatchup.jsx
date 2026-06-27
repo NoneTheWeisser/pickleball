@@ -4,19 +4,23 @@ import PlayerCard from './PlayerCard'
  * Arcade-style Team 1 vs Team 2 display with trapezoidal panels.
  * Used in GameInProgress, VsPreview, and LineupEditor.
  * When onPlayerTap is provided, player cards are tappable for swap selection.
+ * When teamSize and onEmptySlotTap are provided, empty slots render as tappable placeholders.
  */
 export default function ArcadeMatchup({
   team1,
   team2,
+  teamSize,
   className = '',
   animate = false,
   onPlayerTap,
+  onEmptySlotTap,
   selectedPlayerId,
 }) {
   const animateClass = animate ? 'animate-slide-in-left' : ''
   const animateClass2 = animate ? 'animate-slide-in-right [animation-delay:100ms]' : ''
   const vsAnimate = animate ? 'animate-vs-pop [animation-delay:150ms]' : ''
   const interactive = !!onPlayerTap
+  const slotCount = teamSize ?? Math.max(team1.length, team2.length, 1)
 
   function PlayerSlot({ player, slot, accent }) {
     const isSelected = selectedPlayerId === player?.id
@@ -48,6 +52,39 @@ export default function ArcadeMatchup({
     return <div className={base}>{content}</div>
   }
 
+  function EmptySlot({ slot, index, accent }) {
+    if (!onEmptySlotTap) return null
+    const border =
+      accent === 'green'
+        ? 'border-retro-green/40 hover:border-retro-green/80 text-retro-green/50 hover:text-retro-green/80'
+        : 'border-retro-cyan/40 hover:border-retro-cyan/80 text-retro-cyan/50 hover:text-retro-cyan/80'
+
+    return (
+      <button
+        type="button"
+        onClick={() => onEmptySlotTap(slot, index)}
+        className={`flex-1 min-w-0 aspect-square min-h-0 rounded border-2 border-dashed
+          flex items-center justify-center font-mono text-[10px] tracking-widest transition-colors
+          bg-retro-dark/40 ${border}`}
+      >
+        OPEN
+      </button>
+    )
+  }
+
+  function renderTeamSlots(players, slot, accent) {
+    const slots = []
+    for (let i = 0; i < slotCount; i++) {
+      const player = players[i] ?? null
+      if (player) {
+        slots.push(<PlayerSlot key={player.id} player={player} slot={slot} accent={accent} />)
+      } else {
+        slots.push(<EmptySlot key={`${slot}-empty-${i}`} slot={slot} index={i} accent={accent} />)
+      }
+    }
+    return slots
+  }
+
   return (
     <div className={`flex items-stretch ${className}`}>
       {/* Team 1 — green, trapezoid left */}
@@ -63,9 +100,7 @@ export default function ArcadeMatchup({
       >
         <p className="font-mono text-retro-green text-[10px] tracking-widest">TEAM 1</p>
         <div className="flex gap-2 flex-1 w-full min-h-0">
-          {team1.map((p) => (
-            <PlayerSlot key={p.id} player={p} slot="team1" accent="green" />
-          ))}
+          {renderTeamSlots(team1, 'team1', 'green')}
         </div>
       </div>
 
@@ -96,9 +131,7 @@ export default function ArcadeMatchup({
       >
         <p className="font-mono text-retro-cyan text-[10px] tracking-widest">TEAM 2</p>
         <div className="flex gap-2 flex-1 w-full min-h-0">
-          {team2.map((p) => (
-            <PlayerSlot key={p.id} player={p} slot="team2" accent="cyan" />
-          ))}
+          {renderTeamSlots(team2, 'team2', 'cyan')}
         </div>
       </div>
     </div>

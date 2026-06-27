@@ -201,6 +201,12 @@ export default function GameInProgress() {
           onAddPlayer={(player) =>
             setSession((prev) => ({ ...prev, players: [...prev.players, player] }))
           }
+          onRemovePlayer={(playerId) =>
+            setSession((prev) => ({
+              ...prev,
+              players: prev.players.filter((p) => p.id !== playerId),
+            }))
+          }
         />
         <button
           onClick={stopPlaying}
