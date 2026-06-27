@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { pickPlayers, assignTeams } from '../lib/rotation.js'
+import { pickPlayers, assignTeams, shuffle } from '../lib/rotation.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -17,7 +17,7 @@ router.post('/', asyncHandler(async (req, res) => {
       [mode]
     )
 
-    for (const pid of playerIds) {
+    for (const pid of shuffle([...playerIds])) {
       await client.query(
         'INSERT INTO session_players (session_id, player_id) VALUES ($1, $2)',
         [session.id, pid]
@@ -126,7 +126,28 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   )
 
   if (session.mode === 'duel') {
-    return res.json({ team1: [sessionPlayers[0]], team2: [sessionPlayers[1]], bench: [] })
+    const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
+    const recentGames = await getRecentGames(pool, id, 1)
+
+    if (recentGames.length > 0) {
+      const lastGame = recentGames[0]
+      const team1Player = lastGame.players.find((p) => p.team === 1)
+      const team2Player = lastGame.players.find((p) => p.team === 2)
+      const courtIds = new Set([team1Player?.id, team2Player?.id].filter(Boolean))
+      const benchIds = sessionPlayers.map((p) => p.id).filter((pid) => !courtIds.has(pid))
+
+      return res.json({
+        team1: team1Player ? [byId[team1Player.id]] : [sessionPlayers[0]],
+        team2: team2Player ? [byId[team2Player.id]] : [sessionPlayers[1]],
+        bench: benchIds.map((pid) => byId[pid]),
+      })
+    }
+
+    return res.json({
+      team1: [sessionPlayers[0]],
+      team2: [sessionPlayers[1]],
+      bench: sessionPlayers.slice(2).map((p) => p),
+    })
   }
 
   const recentGames = await getRecentGames(pool, id, 2)
@@ -134,7 +155,7 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames[0] ?? null)
 
   const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
-  const benchIds = sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id))
+  const benchIds = shuffle(sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id)))
 
   res.json({
     team1: team1Ids.map((id) => byId[id]),
@@ -154,6 +175,15 @@ router.post('/:id/next-game', asyncHandler(async (req, res) => {
 
   if (!team1 || !team2 || team1.length !== teamSize || team2.length !== teamSize) {
     return res.status(400).json({ error: `team1 and team2 must each have ${teamSize} player ID(s)` })
+  }
+
+  const { rows: sessionPlayerRows } = await pool.query(
+    'SELECT player_id FROM session_players WHERE session_id = $1',
+    [id]
+  )
+  const sessionPlayerIds = new Set(sessionPlayerRows.map((r) => r.player_id))
+  if ([...team1, ...team2].some((pid) => !sessionPlayerIds.has(pid))) {
+    return res.status(400).json({ error: 'One or more players are not in this session' })
   }
 
   const client = await pool.connect()
@@ -191,6 +221,24 @@ router.post('/:id/players', asyncHandler(async (req, res) => {
 
   const { rows: [player] } = await pool.query('SELECT * FROM players WHERE id = $1', [playerId])
   res.status(201).json(player)
+}))
+
+// DELETE /api/sessions/:id/players/:playerId — remove a player from session
+router.delete('/:id/players/:playerId', asyncHandler(async (req, res) => {
+  const { id, playerId } = req.params
+
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+
+  const { rowCount } = await pool.query(
+    'DELETE FROM session_players WHERE session_id = $1 AND player_id = $2',
+    [id, playerId]
+  )
+  if (rowCount === 0) {
+    return res.status(404).json({ error: 'Player not in session' })
+  }
+
+  res.status(204).send()
 }))
 
 // PATCH /api/sessions/:id/end

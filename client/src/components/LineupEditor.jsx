@@ -12,14 +12,24 @@ import { AVATAR_GALLERY } from '../data/avatars'
  *   sessionId: string
  *   onStart: (team1Ids, team2Ids) => void
  *   onAddPlayer: (player) => void  — called after late arrival is added to session
+ *   onRemovePlayer: (playerId) => void  — called after player is removed from session
  */
 function safePlayers(arr) {
   return Array.isArray(arr) ? arr.filter((p) => p != null) : []
 }
 
-export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }) {
-  const [team1, setTeam1] = useState(() => safePlayers(lineup?.team1))
-  const [team2, setTeam2] = useState(() => safePlayers(lineup?.team2))
+function padTeam(players, size) {
+  const padded = Array(size).fill(null)
+  safePlayers(players).slice(0, size).forEach((p, i) => {
+    padded[i] = p
+  })
+  return padded
+}
+
+export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, onRemovePlayer }) {
+  const [expectedTeamSize] = useState(lineup.team1.length)
+  const [team1, setTeam1] = useState(() => padTeam(lineup?.team1, lineup.team1.length))
+  const [team2, setTeam2] = useState(() => padTeam(lineup?.team2, lineup.team2.length))
   const [bench, setBench] = useState(() => safePlayers(lineup?.bench))
   const [selected, setSelected] = useState(null) // { player, slot: 'team1'|'team2'|'bench' }
 
@@ -46,16 +56,58 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
     setSelected(null)
   }
 
+  function handleEmptySlotTap(teamSlot, slotIndex) {
+    if (!selected) return
+    moveToSlot(selected.player, selected.slot, teamSlot, slotIndex)
+    setSelected(null)
+  }
+
+  function moveToSlot(player, fromSlot, toSlot, toIndex) {
+    if (!player?.id) return
+    const lists = { team1: [...team1], team2: [...team2], bench: [...bench] }
+    if (lists[toSlot][toIndex] != null) return
+
+    if (fromSlot === 'bench') {
+      lists.bench = lists.bench.filter((p) => p.id !== player.id)
+    } else {
+      const fromIdx = lists[fromSlot].findIndex((p) => p?.id === player.id)
+      if (fromIdx < 0) return
+      lists[fromSlot][fromIdx] = null
+    }
+
+    lists[toSlot][toIndex] = player
+    setTeam1(lists.team1)
+    setTeam2(lists.team2)
+    setBench(lists.bench)
+  }
+
   function swap(playerA, slotA, playerB, slotB) {
     if (!playerA?.id || !playerB?.id) return
     const lists = { team1: [...team1], team2: [...team2], bench: [...bench] }
 
-    const idxA = lists[slotA].findIndex((p) => p?.id === playerA.id)
-    const idxB = lists[slotB].findIndex((p) => p?.id === playerB.id)
-    if (idxA < 0 || idxB < 0) return
+    if (slotA === 'bench' && slotB === 'bench') return
 
-    lists[slotA][idxA] = playerB
-    lists[slotB][idxB] = playerA
+    if (slotA === 'bench') {
+      const benchIdx = lists.bench.findIndex((p) => p?.id === playerA.id)
+      if (benchIdx < 0) return
+      const teamIdx = lists[slotB].findIndex((p) => p?.id === playerB.id)
+      if (teamIdx < 0) return
+      lists.bench[benchIdx] = playerB
+      lists[slotB][teamIdx] = playerA
+    } else if (slotB === 'bench') {
+      const teamIdx = lists[slotA].findIndex((p) => p?.id === playerA.id)
+      if (teamIdx < 0) return
+      const benchIdx = lists.bench.findIndex((p) => p?.id === playerB.id)
+      if (benchIdx < 0) return
+      lists[slotA][teamIdx] = playerB
+      lists.bench[benchIdx] = playerA
+    } else {
+      const idxA = lists[slotA].findIndex((p) => p?.id === playerA.id)
+      const idxB = lists[slotB].findIndex((p) => p?.id === playerB.id)
+      if (idxA < 0 || idxB < 0) return
+      lists[slotA][idxA] = playerB
+      lists[slotB][idxB] = playerA
+    }
 
     setTeam1(lists.team1)
     setTeam2(lists.team2)
@@ -69,7 +121,9 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
         const players = await res.json()
         if (!res.ok) throw new Error(players.error ?? 'Failed to load players')
         // Filter out anyone already in the current lineup
-        const inSession = new Set([...team1, ...team2, ...bench].filter((p) => p?.id).map((p) => p.id))
+        const inSession = new Set(
+          [...team1, ...team2, ...bench].filter((p) => p?.id).map((p) => p.id)
+        )
         setAllPlayers(players.filter((p) => !inSession.has(p.id)))
       } catch (err) {
         logError(err, { component: 'LineupEditor', action: 'openAddPlayer' })
@@ -95,6 +149,46 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       onAddPlayer(added)
     } catch (err) {
       logError(err, { component: 'LineupEditor', action: 'addExistingPlayer', sessionId })
+      setError(err.message)
+    }
+  }
+
+  async function removeSelectedPlayer() {
+    if (!selected) return
+    const { player, slot } = selected
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/players/${player.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        let message = 'Failed to remove player'
+        try {
+          const data = await res.json()
+          message = data.error ?? message
+        } catch {
+          // 204 or empty body
+        }
+        throw new Error(message)
+      }
+
+      setError(null)
+      if (slot === 'team1' || slot === 'team2') {
+        const setter = slot === 'team1' ? setTeam1 : setTeam2
+        setter((prev) => {
+          const next = [...prev]
+          const idx = next.findIndex((p) => p?.id === player.id)
+          if (idx >= 0) next[idx] = null
+          return next
+        })
+      } else {
+        setBench((prev) => prev.filter((p) => p.id !== player.id))
+      }
+      setSelected(null)
+      setAllPlayers(null)
+      onRemovePlayer(player.id)
+    } catch (err) {
+      logError(err, { component: 'LineupEditor', action: 'removeSelectedPlayer', sessionId })
       setError(err.message)
     }
   }
@@ -135,14 +229,30 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
   }
 
   const isSelected = (player) => selected?.player.id === player.id
-  const [expectedTeamSize] = useState(lineup.team1.length)
-  const courtFull = team1.length === expectedTeamSize && team2.length === expectedTeamSize
+  const courtFull =
+    team1.every((p) => p != null) && team2.every((p) => p != null)
 
   return (
     <div className="flex flex-col gap-6">
       <p className="font-mono text-retro-cream/50 text-xs tracking-widest">
-        Tap a player to select, tap another to swap.
+        Tap a player to select, tap another to swap, or tap an open slot to assign.
       </p>
+      {selected && (
+        <div className="flex justify-center animate-fade-in">
+          <button
+            type="button"
+            onClick={removeSelectedPlayer}
+            className="font-mono text-xs tracking-widest px-4 py-2 border border-retro-pink/30
+              text-retro-pink/70 hover:border-retro-pink/60 hover:text-retro-pink transition-colors"
+          >
+            <span className="text-retro-pink/40">[</span>
+            {' '}Remove {selected.player.name}{' '}
+            <span className="text-retro-pink">×</span>
+            {' '}
+            <span className="text-retro-pink/40">]</span>
+          </button>
+        </div>
+      )}
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
@@ -150,7 +260,9 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       <ArcadeMatchup
         team1={team1}
         team2={team2}
+        teamSize={expectedTeamSize}
         onPlayerTap={handleTap}
+        onEmptySlotTap={handleEmptySlotTap}
         selectedPlayerId={selected?.player?.id}
       />
 
@@ -232,7 +344,12 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer }
       )}
 
       <button
-        onClick={() => onStart(team1.map((p) => p.id), team2.map((p) => p.id))}
+        onClick={() =>
+          onStart(
+            team1.map((p) => p.id),
+            team2.map((p) => p.id)
+          )
+        }
         disabled={!courtFull}
         className="w-full py-4 font-display text-xl tracking-widest bg-retro-green text-retro-dark
           border-2 border-retro-green disabled:bg-retro-card disabled:border-retro-cream/20
