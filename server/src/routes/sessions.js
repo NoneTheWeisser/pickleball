@@ -126,7 +126,28 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   )
 
   if (session.mode === 'duel') {
-    return res.json({ team1: [sessionPlayers[0]], team2: [sessionPlayers[1]], bench: [] })
+    const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
+    const recentGames = await getRecentGames(pool, id, 1)
+
+    if (recentGames.length > 0) {
+      const lastGame = recentGames[0]
+      const team1Player = lastGame.players.find((p) => p.team === 1)
+      const team2Player = lastGame.players.find((p) => p.team === 2)
+      const courtIds = new Set([team1Player?.id, team2Player?.id].filter(Boolean))
+      const benchIds = sessionPlayers.map((p) => p.id).filter((pid) => !courtIds.has(pid))
+
+      return res.json({
+        team1: team1Player ? [byId[team1Player.id]] : [sessionPlayers[0]],
+        team2: team2Player ? [byId[team2Player.id]] : [sessionPlayers[1]],
+        bench: benchIds.map((pid) => byId[pid]),
+      })
+    }
+
+    return res.json({
+      team1: [sessionPlayers[0]],
+      team2: [sessionPlayers[1]],
+      bench: sessionPlayers.slice(2).map((p) => p),
+    })
   }
 
   const recentGames = await getRecentGames(pool, id, 2)
