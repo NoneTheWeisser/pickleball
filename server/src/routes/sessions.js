@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { pickPlayers, assignTeams } from '../lib/rotation.js'
+import { pickPlayers, assignTeams, shuffle } from '../lib/rotation.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -17,7 +17,7 @@ router.post('/', asyncHandler(async (req, res) => {
       [mode]
     )
 
-    for (const pid of playerIds) {
+    for (const pid of shuffle([...playerIds])) {
       await client.query(
         'INSERT INTO session_players (session_id, player_id) VALUES ($1, $2)',
         [session.id, pid]
@@ -155,7 +155,7 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames[0] ?? null)
 
   const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
-  const benchIds = sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id))
+  const benchIds = shuffle(sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id)))
 
   res.json({
     team1: team1Ids.map((id) => byId[id]),

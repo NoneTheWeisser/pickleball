@@ -99,3 +99,5 @@ function shuffle(arr) {
   }
   return a
 }
+
+export { shuffle }
