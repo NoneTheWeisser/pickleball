@@ -1,7 +1,9 @@
 import PlayerCard from './PlayerCard'
+import { generateTeamName, formatTeamLabel } from '../lib/teamNames'
 
 /**
- * Arcade-style Team 1 vs Team 2 display with trapezoidal panels.
+ * Arcade-style team vs team display with trapezoidal panels.
+ * Team labels are generated from player names (see teamNames.js).
  * Used in GameInProgress, VsPreview, and LineupEditor.
  * When onPlayerTap is provided, player cards are tappable for swap selection.
  * When teamSize and onEmptySlotTap are provided, empty slots render as tappable placeholders.
@@ -9,6 +11,7 @@ import PlayerCard from './PlayerCard'
 export default function ArcadeMatchup({
   team1,
   team2,
+  sessionId,
   teamSize,
   className = '',
   animate = false,
@@ -21,6 +24,21 @@ export default function ArcadeMatchup({
   const vsAnimate = animate ? 'animate-vs-pop [animation-delay:150ms]' : ''
   const interactive = !!onPlayerTap
   const slotCount = teamSize ?? Math.max(team1.length, team2.length, 1)
+  const team1FullName = generateTeamName(team1, 'blend', sessionId) ?? 'TEAM 1'
+  const team2FullName = generateTeamName(team2, 'blend', sessionId) ?? 'TEAM 2'
+  const team1Label = formatTeamLabel(team1FullName)
+  const team2Label = formatTeamLabel(team2FullName)
+
+  function TeamLabel({ fullName, label, accentClass }) {
+    return (
+      <p
+        className={`font-mono ${accentClass} text-[10px] tracking-widest truncate max-w-full w-full text-center px-1`}
+        title={fullName !== label ? fullName : undefined}
+      >
+        {label}
+      </p>
+    )
+  }
 
   function PlayerSlot({ player, slot, accent }) {
     const isSelected = selectedPlayerId === player?.id
@@ -98,7 +116,7 @@ export default function ArcadeMatchup({
             'radial-gradient(ellipse 90% 80% at 50% 50%, rgba(0,255,136,0.18) 0%, rgba(0,255,136,0.06) 60%, rgba(0,0,0,0.15) 100%)',
         }}
       >
-        <p className="font-mono text-retro-green text-[10px] tracking-widest">TEAM 1</p>
+        <TeamLabel fullName={team1FullName} label={team1Label} accentClass="text-retro-green" />
         <div className="flex gap-2 flex-1 w-full min-h-0">
           {renderTeamSlots(team1, 'team1', 'green')}
         </div>
@@ -129,7 +147,7 @@ export default function ArcadeMatchup({
             'radial-gradient(ellipse 90% 80% at 50% 50%, rgba(0,212,255,0.18) 0%, rgba(0,212,255,0.06) 60%, rgba(0,0,0,0.15) 100%)',
         }}
       >
-        <p className="font-mono text-retro-cyan text-[10px] tracking-widest">TEAM 2</p>
+        <TeamLabel fullName={team2FullName} label={team2Label} accentClass="text-retro-cyan" />
         <div className="flex gap-2 flex-1 w-full min-h-0">
           {renderTeamSlots(team2, 'team2', 'cyan')}
         </div>
