@@ -1,8 +1,15 @@
-import { isRealFirstName } from '../data/firstNames.js'
+import { isRealFirstName } from '../../data/firstNames.js'
+import {
+  hashSeed,
+  firstToken,
+  titleCase as toDisplayName,
+  normalizePlayers,
+  TEAM_NAME_MAX_LENGTH,
+} from './shared.js'
 
 /** Min/max chars for team labels in ArcadeMatchup. */
 export const TEAM_NAME_MIN_LENGTH = 4
-export const TEAM_NAME_MAX_LENGTH = 7
+export { TEAM_NAME_MAX_LENGTH }
 /** Longer cap when the mashup is a real first name (e.g. Christina). */
 export const TEAM_NAME_MAX_REAL = 10
 
@@ -30,25 +37,8 @@ const KNOWN_WORDS = new Set([
   'rock', 'dock', 'kick', 'pick', 'sick',
 ])
 
-function firstToken(name) {
-  return (name ?? '').trim().split(/\s+/)[0] || 'Player'
-}
-
-function hashSeed(str) {
-  let h = 0
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 31 + str.charCodeAt(i)) >>> 0
-  }
-  return h
-}
-
 function isVowel(c) {
   return VOWELS.has(c)
-}
-
-function toDisplayName(str) {
-  if (!str) return ''
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
 function scoreBigrams(combo) {
@@ -197,20 +187,9 @@ function portmanteau(nameA, nameB, seed) {
   return toDisplayName(top[hashSeed(seed) % top.length].combo)
 }
 
-function singlePlayerName(name) {
-  return toDisplayName(firstToken(name).slice(0, TEAM_NAME_MAX_LENGTH))
-}
-
-export function generateTeamName(players) {
-  const roster = (players ?? []).filter(Boolean)
-  if (roster.length === 0) return null
-
-  const sorted = [...roster].sort((a, b) => a.id - b.id)
-  const seed = sorted.map((p) => p.id).join('-')
-  const names = sorted.map((p) => p.name)
-
-  if (sorted.length === 1) return singlePlayerName(names[0])
-
+export function generateBlendTeamName(players, sessionId) {
+  const normalized = normalizePlayers(players, sessionId)
+  const { seed, names } = normalized
   return portmanteau(names[0], names[1], seed)
 }
 

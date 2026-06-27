@@ -11,6 +11,7 @@ import { generateTeamName, formatTeamLabel } from '../lib/teamNames'
 export default function ArcadeMatchup({
   team1,
   team2,
+  sessionId,
   teamSize,
   className = '',
   animate = false,
@@ -23,8 +24,8 @@ export default function ArcadeMatchup({
   const vsAnimate = animate ? 'animate-vs-pop [animation-delay:150ms]' : ''
   const interactive = !!onPlayerTap
   const slotCount = teamSize ?? Math.max(team1.length, team2.length, 1)
-  const team1FullName = generateTeamName(team1) ?? 'TEAM 1'
-  const team2FullName = generateTeamName(team2) ?? 'TEAM 2'
+  const team1FullName = generateTeamName(team1, 'blend', sessionId) ?? 'TEAM 1'
+  const team2FullName = generateTeamName(team2, 'blend', sessionId) ?? 'TEAM 2'
   const team1Label = formatTeamLabel(team1FullName)
   const team2Label = formatTeamLabel(team2FullName)
 

@@ -272,7 +272,7 @@ export default function GameInProgress() {
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
       )}
       <section className="overflow-hidden">
-        <ArcadeMatchup team1={team1} team2={team2} animate />
+        <ArcadeMatchup team1={team1} team2={team2} sessionId={sessionId} animate />
       </section>
 
       {sitting.length > 0 && (

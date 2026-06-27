@@ -260,6 +260,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
       <ArcadeMatchup
         team1={team1}
         team2={team2}
+        sessionId={sessionId}
         teamSize={expectedTeamSize}
         onPlayerTap={handleTap}
         onEmptySlotTap={handleEmptySlotTap}
