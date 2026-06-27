@@ -238,13 +238,20 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
         Tap a player to select, tap another to swap, or tap an open slot to assign.
       </p>
       {selected && (
-        <button
-          type="button"
-          onClick={removeSelectedPlayer}
-          className="font-mono text-retro-pink/70 text-xs tracking-widest hover:text-retro-pink transition-colors self-start"
-        >
-          Remove {selected.player.name} from session
-        </button>
+        <div className="flex justify-center animate-fade-in">
+          <button
+            type="button"
+            onClick={removeSelectedPlayer}
+            className="font-mono text-xs tracking-widest px-4 py-2 border border-retro-pink/30
+              text-retro-pink/70 hover:border-retro-pink/60 hover:text-retro-pink transition-colors"
+          >
+            <span className="text-retro-pink/40">[</span>
+            {' '}Remove {selected.player.name}{' '}
+            <span className="text-retro-pink">×</span>
+            {' '}
+            <span className="text-retro-pink/40">]</span>
+          </button>
+        </div>
       )}
       {error && (
         <p className="font-mono text-retro-pink text-sm" role="alert">{error}</p>
