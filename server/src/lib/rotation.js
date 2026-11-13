@@ -1,16 +1,19 @@
 /**
  * Determine which 4 players take the court next.
  *
- * Rules:
- *   - Players who played the last 2 consecutive games must sit.
- *   - Players who sat the previous game have priority to play.
- *   - Fill remaining spots randomly from those who played only 1 of the last 2 games.
- *   - If that would leave fewer than 4 on court but the session has ≥4 players,
- *     backfill from the rest (including those who would otherwise sit) so doubles
- *     lineups always have four IDs.
+ * Court fills in this order:
+ *   1. Players with zero games in this session.
+ *   2. Players who sat the previous game.
+ *   3. Players who played exactly one of the last two games.
+ *   4. Players who played both of the last two games, only to reach 4.
+ *
+ * Inside a tier, players with fewer games this session come first. Ties are
+ * random. gamesPlayed maps player id to games already played; ids missing from
+ * it have played zero. recentGames is most-recent first.
  */
-export function pickPlayers(sessionPlayers, recentGames) {
+export function pickPlayers(sessionPlayers, recentGames, gamesPlayed = new Map()) {
   const playerIds = sessionPlayers.map((p) => p.id)
+  const played = gamesPlayed instanceof Map ? gamesPlayed : new Map(gamesPlayed)
 
   if (recentGames.length === 0) {
     return shuffle(playerIds).slice(0, 4)
@@ -18,40 +21,35 @@ export function pickPlayers(sessionPlayers, recentGames) {
 
   const lastGame = recentGames[0]
   const prevGame = recentGames[1] ?? null
-
   const lastGameIds = new Set(lastGame.players.map((p) => p.id))
   const prevGameIds = prevGame ? new Set(prevGame.players.map((p) => p.id)) : new Set()
+  const count = (id) => played.get(id) ?? 0
 
+  const neverPlayed = playerIds.filter((id) => count(id) === 0)
+  const satLast = playerIds.filter((id) => count(id) > 0 && !lastGameIds.has(id))
   const playedBoth = playerIds.filter((id) => lastGameIds.has(id) && prevGameIds.has(id))
-  const satLast = playerIds.filter((id) => !lastGameIds.has(id))
-  const playedOnce = playerIds.filter(
-    (id) => !playedBoth.includes(id) && !satLast.includes(id)
-  )
+  const playedOnce = playerIds.filter((id) => lastGameIds.has(id) && !prevGameIds.has(id))
 
-  // Must sit: played both recent games
-  const mustSit = new Set(playedBoth)
+  return [
+    ...orderedByGamesPlayed(neverPlayed, count),
+    ...orderedByGamesPlayed(satLast, count),
+    ...orderedByGamesPlayed(playedOnce, count),
+    ...orderedByGamesPlayed(playedBoth, count),
+  ].slice(0, Math.min(4, playerIds.length))
+}
 
-  // Priority pool: sat last game
-  const priority = shuffle(satLast.filter((id) => !mustSit.has(id)))
-
-  // Fill pool: played exactly one of the last two games
-  const fill = shuffle(playedOnce.filter((id) => !mustSit.has(id)))
-
-  let court = [...priority, ...fill].slice(0, 4)
-
-  // "Must sit" can exclude too many people to fill a doubles court (e.g. 5 players
-  // after two games: three may appear in both recent games). Backfill from anyone
-  // not yet selected so we still return four on court when the session has ≥4 players.
-  if (court.length < 4 && playerIds.length >= 4) {
-    const onCourt = new Set(court)
-    const remainder = shuffle(playerIds.filter((id) => !onCourt.has(id)))
-    for (const id of remainder) {
-      if (court.length >= 4) break
-      court.push(id)
-    }
+function orderedByGamesPlayed(ids, count) {
+  const buckets = new Map()
+  for (const id of ids) {
+    const games = count(id)
+    if (!buckets.has(games)) buckets.set(games, [])
+    buckets.get(games).push(id)
   }
-
-  return court
+  const ordered = []
+  for (const games of [...buckets.keys()].sort((a, b) => a - b)) {
+    ordered.push(...shuffle(buckets.get(games)))
+  }
+  return ordered
 }
 
 /**
@@ -80,6 +78,62 @@ export function assignTeams(courtIds, previousGame) {
   // Fallback: return whatever we have (all pairings exhausted — unlikely with 4 players)
   const shuffled = shuffle([...courtIds])
   return { team1: [shuffled[0], shuffled[1]], team2: [shuffled[2], shuffled[3]] }
+}
+
+/**
+ * Put a late arrival on the upcoming co-op court without reshuffling everyone else.
+ * An open slot is filled first. Otherwise the arrival takes the slot of the on-court
+ * player with the weakest claim: played the last two games, then played the last
+ * game, then anyone. Ties are random. Head-to-head lineups are left unchanged and
+ * the arrival stays on the bench.
+ *
+ * recentGames is most-recent first, same shape as pickPlayers.
+ */
+export function placeArrival({ team1, team2, bench, arrival, recentGames = [] }) {
+  const nextTeam1 = [...team1]
+  const nextTeam2 = [...team2]
+  const nextBench = [...bench]
+
+  if (nextTeam1.length !== 2 || nextTeam2.length !== 2) {
+    nextBench.push(arrival)
+    return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+  }
+
+  const slots = [
+    { team: nextTeam1, index: 0 },
+    { team: nextTeam1, index: 1 },
+    { team: nextTeam2, index: 0 },
+    { team: nextTeam2, index: 1 },
+  ]
+  const open = slots.find((slot) => slot.team[slot.index] == null)
+  if (open) {
+    open.team[open.index] = arrival
+    return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+  }
+
+  const ranked = slots.map((slot) => ({
+    ...slot,
+    player: slot.team[slot.index],
+    rank: courtClaim(slot.team[slot.index].id, recentGames),
+  }))
+  const weakestRank = Math.min(...ranked.map((slot) => slot.rank))
+  const chosen = shuffle(ranked.filter((slot) => slot.rank === weakestRank))[0]
+  chosen.team[chosen.index] = arrival
+  nextBench.push(chosen.player)
+  return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+}
+
+// Lower rank is bumped first.
+function courtClaim(playerId, recentGames) {
+  const last = recentGames[0]
+  if (!last) return 2
+  const lastIds = new Set(last.players.map((player) => player.id))
+  const prevIds = recentGames[1]
+    ? new Set(recentGames[1].players.map((player) => player.id))
+    : new Set()
+  if (lastIds.has(playerId) && prevIds.has(playerId)) return 0
+  if (lastIds.has(playerId)) return 1
+  return 2
 }
 
 function repeatsPartner(team1, team2, prevPairs) {

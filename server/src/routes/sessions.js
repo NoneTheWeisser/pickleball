@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { pickPlayers, assignTeams, shuffle } from '../lib/rotation.js'
+import { pickPlayers, assignTeams, placeArrival, shuffle } from '../lib/rotation.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -151,16 +151,17 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
   }
 
   const recentGames = await getRecentGames(pool, id, 2)
-  const courtIds = pickPlayers(sessionPlayers, recentGames)
+  const gamesPlayed = await getGamesPlayed(pool, id)
+  const courtIds = pickPlayers(sessionPlayers, recentGames, gamesPlayed)
   const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames[0] ?? null)
 
   const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
   const benchIds = shuffle(sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id)))
 
   res.json({
-    team1: team1Ids.map((id) => byId[id]),
-    team2: team2Ids.map((id) => byId[id]),
-    bench: benchIds.map((id) => byId[id]),
+    team1: team1Ids.map((pid) => byId[pid]),
+    team2: team2Ids.map((pid) => byId[pid]),
+    bench: benchIds.map((pid) => byId[pid]),
   })
 }))
 
@@ -198,6 +199,50 @@ router.post('/:id/next-game', asyncHandler(async (req, res) => {
   } finally {
     client.release()
   }
+}))
+
+// POST /api/sessions/:id/place-arrival — seat a late arrival on the upcoming co-op court
+router.post('/:id/place-arrival', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { playerId, team1, team2, bench } = req.body
+
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+  if (session.mode === 'duel') {
+    return res.status(400).json({ error: 'Head-to-head keeps late arrivals on the bench' })
+  }
+  if (!Array.isArray(team1) || !Array.isArray(team2) || team1.length !== 2 || team2.length !== 2) {
+    return res.status(400).json({ error: 'team1 and team2 must each have 2 slots' })
+  }
+  if (!Array.isArray(bench)) {
+    return res.status(400).json({ error: 'bench must be a list of player ids' })
+  }
+
+  const { rows: sessionPlayers } = await pool.query(
+    `SELECT p.* FROM players p
+     JOIN session_players sp ON sp.player_id = p.id
+     WHERE sp.session_id = $1`,
+    [id]
+  )
+  const byId = Object.fromEntries(sessionPlayers.map((player) => [player.id, player]))
+  if (!byId[playerId]) {
+    return res.status(400).json({ error: 'Player is not in this session' })
+  }
+
+  const mentioned = [...team1, ...team2, ...bench]
+  if (mentioned.some((pid) => pid != null && !byId[pid])) {
+    return res.status(400).json({ error: 'One or more players are not in this session' })
+  }
+
+  const recentGames = await getRecentGames(pool, id, 2)
+  const lineup = placeArrival({
+    team1: team1.map((pid) => (pid == null ? null : byId[pid])),
+    team2: team2.map((pid) => (pid == null ? null : byId[pid])),
+    bench: bench.filter((pid) => pid != null).map((pid) => byId[pid]),
+    arrival: byId[playerId],
+    recentGames,
+  })
+  res.json(lineup)
 }))
 
 // POST /api/sessions/:id/players — add a late arrival
@@ -300,6 +345,18 @@ router.get('/:id/summary', asyncHandler(async (req, res) => {
 }))
 
 // --- helpers ---
+
+async function getGamesPlayed(client, sessionId) {
+  const { rows } = await client.query(
+    `SELECT gp.player_id, COUNT(*)::int AS games
+     FROM game_players gp
+     JOIN games g ON g.id = gp.game_id
+     WHERE g.session_id = $1
+     GROUP BY gp.player_id`,
+    [sessionId]
+  )
+  return new Map(rows.map((row) => [row.player_id, Number(row.games)]))
+}
 
 async function getRecentGames(client, sessionId, limit = 2) {
   const { rows: games } = await client.query(
