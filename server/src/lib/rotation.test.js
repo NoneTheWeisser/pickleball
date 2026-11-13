@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { assignTeams, pickPlayers, placeArrival, seatNewArrivals } from './rotation.js'
+import { assignTeams, pickPlayers, placeArrival } from './rotation.js'
 
 function roster(count) {
   return Array.from({ length: count }, (_, i) => ({ id: i + 1 }))
@@ -17,11 +17,19 @@ function satIds(players, court) {
   return players.map((player) => player.id).filter((id) => !onCourt.has(id))
 }
 
+function gamesPlayedFrom(history) {
+  const counts = new Map()
+  for (const court of history) {
+    for (const id of court) counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return counts
+}
+
 function runSession(count, games, onPick) {
   const players = roster(count)
   const history = []
   for (let gameNumber = 1; gameNumber <= games; gameNumber++) {
-    const court = pickPlayers(players, recentGames(history))
+    const court = pickPlayers(players, recentGames(history), gamesPlayedFrom(history))
     onPick({ players, history, court, gameNumber })
     history.unshift(court)
   }
@@ -83,26 +91,18 @@ describe('rotation', { concurrency: false }, () => {
     }
   })
 
-  it('with 5 players, can sit someone twice before everyone has sat once', () => {
-    const random = Math.random
-    Math.random = () => 0.999999
-    try {
+  it('with 5 players, each player sits once over 5 games and nobody sits twice in a row', () => {
+    for (let trial = 0; trial < 100; trial++) {
       const counts = new Map(roster(5).map((player) => [player.id, 0]))
-      const sits = []
+      let previousSitter = null
       runSession(5, 5, ({ players, court }) => {
         const sitting = satIds(players, court)
-        sits.push(sitting)
-        for (const id of sitting) counts.set(id, counts.get(id) + 1)
+        assert.equal(sitting.length, 1)
+        assert.notEqual(sitting[0], previousSitter)
+        previousSitter = sitting[0]
+        counts.set(sitting[0], counts.get(sitting[0]) + 1)
       })
-      // Identity shuffle (Math.random near 1). One real outcome of today's backfill.
-      assert.deepEqual(sits, [[5], [4], [3], [5], [4]])
-      assert.equal(counts.get(1), 0)
-      assert.equal(counts.get(2), 0)
-      assert.equal(counts.get(3), 1)
-      assert.equal(counts.get(4), 2)
-      assert.equal(counts.get(5), 2)
-    } finally {
-      Math.random = random
+      for (const gamesSat of counts.values()) assert.equal(gamesSat, 1)
     }
   })
 
@@ -121,23 +121,37 @@ describe('rotation', { concurrency: false }, () => {
     }
   })
 
-  it('treats a player with no games yet like someone who sat the last game', () => {
+  it('puts a new player and everyone who sat on court for a 5- or 6-player session', () => {
+    const lastGame = { players: [1, 2, 3, 4].map((id) => ({ id })) }
+
+    const five = new Set(pickPlayers(roster(6), [lastGame], new Map([[1, 2], [2, 2], [3, 2], [4, 2], [5, 1]])))
+    assert.ok(five.has(6))
+    assert.ok(five.has(5))
+
+    const six = new Set(pickPlayers(
+      roster(7),
+      [lastGame],
+      new Map([[1, 2], [2, 2], [3, 2], [4, 2], [5, 1], [6, 1]])
+    ))
+    assert.ok(six.has(7))
+    assert.ok(six.has(5))
+    assert.ok(six.has(6))
+  })
+
+  it('seats two newcomers ahead of one player who was already waiting in a group of 7', () => {
     const players = roster(9)
     const lastGame = { players: [1, 2, 3, 4].map((id) => ({ id })) }
-    let newPlayerOnCourt = 0
-    let newPlayerBenched = 0
-    let sitterBenched = 0
+    const gamesPlayed = new Map([
+      [1, 2], [2, 2], [3, 2], [4, 2],
+      [5, 1], [6, 1], [7, 1],
+    ])
+    const court = new Set(pickPlayers(players, [lastGame], gamesPlayed))
 
-    for (let trial = 0; trial < 200; trial++) {
-      const court = pickPlayers(players, [lastGame])
-      if (court.includes(9)) newPlayerOnCourt++
-      else newPlayerBenched++
-      if (!court.includes(5)) sitterBenched++
-    }
-
-    assert.ok(newPlayerOnCourt > 0)
-    assert.ok(newPlayerBenched > 0)
-    assert.ok(sitterBenched > 0)
+    assert.ok(court.has(8))
+    assert.ok(court.has(9))
+    const waiting = [5, 6, 7].filter((id) => court.has(id))
+    assert.equal(waiting.length, 2)
+    assert.equal(court.size, 4)
   })
 
   it('fills an open slot when a late arrival joins', () => {
@@ -242,42 +256,6 @@ describe('rotation', { concurrency: false }, () => {
     assert.equal(second.team1[1].id, 6)
     assert.deepEqual(second.team2, [steadyA, steadyB])
     assert.deepEqual(second.bench.map((player) => player.id), [playedBoth.id, playedLast.id])
-  })
-
-  it('leaves the lineup alone when nobody has played yet', () => {
-    const lineup = {
-      team1: [{ id: 1 }, { id: 2 }],
-      team2: [{ id: 3 }, { id: 4 }],
-      bench: [{ id: 5 }, { id: 6 }],
-    }
-    const seated = seatNewArrivals(lineup, { recentGames: [], playedIds: [] })
-    assert.equal(seated, lineup)
-  })
-
-  it('seats players with no games and leaves people who have already played on the bench', () => {
-    const court = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]
-    const sat = [{ id: 5 }, { id: 6 }, { id: 7 }]
-    const firstArrival = { id: 8 }
-    const secondArrival = { id: 9 }
-    const recentGames = [
-      { players: court },
-      { players: court },
-    ]
-
-    const seated = seatNewArrivals({
-      team1: [court[0], court[1]],
-      team2: [court[2], court[3]],
-      bench: [...sat, firstArrival, secondArrival],
-    }, {
-      recentGames,
-      playedIds: [1, 2, 3, 4, 5, 6, 7],
-    })
-
-    const onCourt = [...seated.team1, ...seated.team2].map((player) => player.id)
-    assert.ok(onCourt.includes(8))
-    assert.ok(onCourt.includes(9))
-    for (const player of sat) assert.ok(!onCourt.includes(player.id))
-    assert.equal(onCourt.length, 4)
   })
 
   it('leaves a head-to-head court alone and puts the arrival on the bench', () => {

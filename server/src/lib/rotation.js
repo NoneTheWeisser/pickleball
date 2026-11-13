@@ -1,16 +1,19 @@
 /**
  * Determine which 4 players take the court next.
  *
- * Rules:
- *   - Players who played the last 2 consecutive games must sit.
- *   - Players who sat the previous game have priority to play.
- *   - Fill remaining spots randomly from those who played only 1 of the last 2 games.
- *   - If that would leave fewer than 4 on court but the session has ≥4 players,
- *     backfill from the rest (including those who would otherwise sit) so doubles
- *     lineups always have four IDs.
+ * Court fills in this order:
+ *   1. Players with zero games in this session.
+ *   2. Players who sat the previous game.
+ *   3. Players who played exactly one of the last two games.
+ *   4. Players who played both of the last two games, only to reach 4.
+ *
+ * Inside a tier, players with fewer games this session come first. Ties are
+ * random. gamesPlayed maps player id to games already played; ids missing from
+ * it have played zero. recentGames is most-recent first.
  */
-export function pickPlayers(sessionPlayers, recentGames) {
+export function pickPlayers(sessionPlayers, recentGames, gamesPlayed = new Map()) {
   const playerIds = sessionPlayers.map((p) => p.id)
+  const played = gamesPlayed instanceof Map ? gamesPlayed : new Map(gamesPlayed)
 
   if (recentGames.length === 0) {
     return shuffle(playerIds).slice(0, 4)
@@ -18,40 +21,35 @@ export function pickPlayers(sessionPlayers, recentGames) {
 
   const lastGame = recentGames[0]
   const prevGame = recentGames[1] ?? null
-
   const lastGameIds = new Set(lastGame.players.map((p) => p.id))
   const prevGameIds = prevGame ? new Set(prevGame.players.map((p) => p.id)) : new Set()
+  const count = (id) => played.get(id) ?? 0
 
+  const neverPlayed = playerIds.filter((id) => count(id) === 0)
+  const satLast = playerIds.filter((id) => count(id) > 0 && !lastGameIds.has(id))
   const playedBoth = playerIds.filter((id) => lastGameIds.has(id) && prevGameIds.has(id))
-  const satLast = playerIds.filter((id) => !lastGameIds.has(id))
-  const playedOnce = playerIds.filter(
-    (id) => !playedBoth.includes(id) && !satLast.includes(id)
-  )
+  const playedOnce = playerIds.filter((id) => lastGameIds.has(id) && !prevGameIds.has(id))
 
-  // Must sit: played both recent games
-  const mustSit = new Set(playedBoth)
+  return [
+    ...orderedByGamesPlayed(neverPlayed, count),
+    ...orderedByGamesPlayed(satLast, count),
+    ...orderedByGamesPlayed(playedOnce, count),
+    ...orderedByGamesPlayed(playedBoth, count),
+  ].slice(0, Math.min(4, playerIds.length))
+}
 
-  // Priority pool: sat last game
-  const priority = shuffle(satLast.filter((id) => !mustSit.has(id)))
-
-  // Fill pool: played exactly one of the last two games
-  const fill = shuffle(playedOnce.filter((id) => !mustSit.has(id)))
-
-  let court = [...priority, ...fill].slice(0, 4)
-
-  // "Must sit" can exclude too many people to fill a doubles court (e.g. 5 players
-  // after two games: three may appear in both recent games). Backfill from anyone
-  // not yet selected so we still return four on court when the session has ≥4 players.
-  if (court.length < 4 && playerIds.length >= 4) {
-    const onCourt = new Set(court)
-    const remainder = shuffle(playerIds.filter((id) => !onCourt.has(id)))
-    for (const id of remainder) {
-      if (court.length >= 4) break
-      court.push(id)
-    }
+function orderedByGamesPlayed(ids, count) {
+  const buckets = new Map()
+  for (const id of ids) {
+    const games = count(id)
+    if (!buckets.has(games)) buckets.set(games, [])
+    buckets.get(games).push(id)
   }
-
-  return court
+  const ordered = []
+  for (const games of [...buckets.keys()].sort((a, b) => a - b)) {
+    ordered.push(...shuffle(buckets.get(games)))
+  }
+  return ordered
 }
 
 /**
@@ -123,29 +121,6 @@ export function placeArrival({ team1, team2, bench, arrival, recentGames = [] })
   chosen.team[chosen.index] = arrival
   nextBench.push(chosen.player)
   return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
-}
-
-/**
- * After a fresh rotation, pull players who have never appeared in a game
- * off the bench and onto the court. No-op when nobody has played yet, so the
- * opening shuffle stays a fair draw. Arrivals are seated in bench order.
- */
-export function seatNewArrivals(lineup, { recentGames = [], playedIds = [] } = {}) {
-  const played = new Set(playedIds)
-  if (played.size === 0) return lineup
-
-  const arrivals = lineup.bench.filter((player) => player && !played.has(player.id))
-  let current = lineup
-  for (const arrival of arrivals) {
-    current = placeArrival({
-      team1: current.team1,
-      team2: current.team2,
-      bench: current.bench.filter((player) => player?.id !== arrival.id),
-      arrival,
-      recentGames,
-    })
-  }
-  return current
 }
 
 // Lower rank is bumped first.
