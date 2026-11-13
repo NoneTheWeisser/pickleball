@@ -38,6 +38,7 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
   const [newName, setNewName] = useState('')
   const [newAvatarId, setNewAvatarId] = useState(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
   const [error, setError] = useState(null)
+  const [shuffling, setShuffling] = useState(false)
 
   function handleTap(player, slot) {
     if (!selected) {
@@ -262,15 +263,55 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
     }
   }
 
+  async function shuffleLineup() {
+    if (expectedTeamSize !== 2 || shuffling) return
+    setShuffling(true)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/proposed-rotation`)
+      const lineup = await res.json()
+      if (!res.ok) throw new Error(lineup.error ?? 'Failed to randomize')
+      setError(null)
+      setTeam1(padTeam(lineup.team1, expectedTeamSize))
+      setTeam2(padTeam(lineup.team2, expectedTeamSize))
+      setBench(safePlayers(lineup.bench))
+      setSelected(null)
+      setShowAddPlayer(false)
+    } catch (err) {
+      logError(err, { component: 'LineupEditor', action: 'shuffleLineup', sessionId })
+      setError(err.message)
+    } finally {
+      setShuffling(false)
+    }
+  }
+
   const isSelected = (player) => selected?.player.id === player.id
   const courtFull =
     team1.every((p) => p != null) && team2.every((p) => p != null)
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="font-mono text-retro-cream/50 text-xs tracking-widest">
-        Tap a player to select, tap another to swap, or tap an open slot to assign.
-      </p>
+      <div className="flex flex-col gap-3">
+        <p className="font-mono text-retro-cream/50 text-xs tracking-widest">
+          Tap a player to select, tap another to swap, or tap an open slot to assign.
+        </p>
+        {expectedTeamSize === 2 && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={shuffleLineup}
+              disabled={shuffling}
+              className="font-mono text-xs tracking-widest px-4 py-2 border border-retro-cyan/40
+                text-retro-cyan/80 hover:border-retro-cyan hover:text-retro-cyan
+                disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {shuffling ? 'Randomizing' : 'Randomize'}
+            </button>
+            <p className="font-mono text-retro-cream/40 text-xs tracking-widest text-center">
+              Randomize rebuilds the lineup.
+            </p>
+          </div>
+        )}
+      </div>
       {selected && (
         <div className="flex justify-center animate-fade-in">
           <button

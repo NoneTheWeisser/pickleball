@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { assignTeams, pickPlayers, placeArrival } from './rotation.js'
+import { assignTeams, pickPlayers, placeArrival, seatNewArrivals } from './rotation.js'
 
 function roster(count) {
   return Array.from({ length: count }, (_, i) => ({ id: i + 1 }))
@@ -242,6 +242,42 @@ describe('rotation', { concurrency: false }, () => {
     assert.equal(second.team1[1].id, 6)
     assert.deepEqual(second.team2, [steadyA, steadyB])
     assert.deepEqual(second.bench.map((player) => player.id), [playedBoth.id, playedLast.id])
+  })
+
+  it('leaves the lineup alone when nobody has played yet', () => {
+    const lineup = {
+      team1: [{ id: 1 }, { id: 2 }],
+      team2: [{ id: 3 }, { id: 4 }],
+      bench: [{ id: 5 }, { id: 6 }],
+    }
+    const seated = seatNewArrivals(lineup, { recentGames: [], playedIds: [] })
+    assert.equal(seated, lineup)
+  })
+
+  it('seats players with no games and leaves people who have already played on the bench', () => {
+    const court = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]
+    const sat = [{ id: 5 }, { id: 6 }, { id: 7 }]
+    const firstArrival = { id: 8 }
+    const secondArrival = { id: 9 }
+    const recentGames = [
+      { players: court },
+      { players: court },
+    ]
+
+    const seated = seatNewArrivals({
+      team1: [court[0], court[1]],
+      team2: [court[2], court[3]],
+      bench: [...sat, firstArrival, secondArrival],
+    }, {
+      recentGames,
+      playedIds: [1, 2, 3, 4, 5, 6, 7],
+    })
+
+    const onCourt = [...seated.team1, ...seated.team2].map((player) => player.id)
+    assert.ok(onCourt.includes(8))
+    assert.ok(onCourt.includes(9))
+    for (const player of sat) assert.ok(!onCourt.includes(player.id))
+    assert.equal(onCourt.length, 4)
   })
 
   it('leaves a head-to-head court alone and puts the arrival on the bench', () => {

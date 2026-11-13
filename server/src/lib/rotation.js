@@ -125,6 +125,29 @@ export function placeArrival({ team1, team2, bench, arrival, recentGames = [] })
   return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
 }
 
+/**
+ * After a fresh rotation, pull players who have never appeared in a game
+ * off the bench and onto the court. No-op when nobody has played yet, so the
+ * opening shuffle stays a fair draw. Arrivals are seated in bench order.
+ */
+export function seatNewArrivals(lineup, { recentGames = [], playedIds = [] } = {}) {
+  const played = new Set(playedIds)
+  if (played.size === 0) return lineup
+
+  const arrivals = lineup.bench.filter((player) => player && !played.has(player.id))
+  let current = lineup
+  for (const arrival of arrivals) {
+    current = placeArrival({
+      team1: current.team1,
+      team2: current.team2,
+      bench: current.bench.filter((player) => player?.id !== arrival.id),
+      arrival,
+      recentGames,
+    })
+  }
+  return current
+}
+
 // Lower rank is bumped first.
 function courtClaim(playerId, recentGames) {
   const last = recentGames[0]

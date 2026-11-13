@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { pickPlayers, assignTeams, placeArrival, shuffle } from '../lib/rotation.js'
+import { pickPlayers, assignTeams, placeArrival, seatNewArrivals, shuffle } from '../lib/rotation.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -156,12 +156,13 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
 
   const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
   const benchIds = shuffle(sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id)))
+  const playedIds = await getPlayedIds(pool, id)
 
-  res.json({
-    team1: team1Ids.map((id) => byId[id]),
-    team2: team2Ids.map((id) => byId[id]),
-    bench: benchIds.map((id) => byId[id]),
-  })
+  res.json(seatNewArrivals({
+    team1: team1Ids.map((pid) => byId[pid]),
+    team2: team2Ids.map((pid) => byId[pid]),
+    bench: benchIds.map((pid) => byId[pid]),
+  }, { recentGames, playedIds }))
 }))
 
 // POST /api/sessions/:id/next-game — create game with explicit teams
@@ -344,6 +345,17 @@ router.get('/:id/summary', asyncHandler(async (req, res) => {
 }))
 
 // --- helpers ---
+
+async function getPlayedIds(client, sessionId) {
+  const { rows } = await client.query(
+    `SELECT DISTINCT gp.player_id
+     FROM game_players gp
+     JOIN games g ON g.id = gp.game_id
+     WHERE g.session_id = $1`,
+    [sessionId]
+  )
+  return rows.map((row) => row.player_id)
+}
 
 async function getRecentGames(client, sessionId, limit = 2) {
   const { rows: games } = await client.query(
