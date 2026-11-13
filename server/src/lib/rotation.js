@@ -82,6 +82,62 @@ export function assignTeams(courtIds, previousGame) {
   return { team1: [shuffled[0], shuffled[1]], team2: [shuffled[2], shuffled[3]] }
 }
 
+/**
+ * Put a late arrival on the upcoming co-op court without reshuffling everyone else.
+ * An open slot is filled first. Otherwise the arrival takes the slot of the on-court
+ * player with the weakest claim: played the last two games, then played the last
+ * game, then anyone. Ties are random. Head-to-head lineups are left unchanged and
+ * the arrival stays on the bench.
+ *
+ * recentGames is most-recent first, same shape as pickPlayers.
+ */
+export function placeArrival({ team1, team2, bench, arrival, recentGames = [] }) {
+  const nextTeam1 = [...team1]
+  const nextTeam2 = [...team2]
+  const nextBench = [...bench]
+
+  if (nextTeam1.length !== 2 || nextTeam2.length !== 2) {
+    nextBench.push(arrival)
+    return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+  }
+
+  const slots = [
+    { team: nextTeam1, index: 0 },
+    { team: nextTeam1, index: 1 },
+    { team: nextTeam2, index: 0 },
+    { team: nextTeam2, index: 1 },
+  ]
+  const open = slots.find((slot) => slot.team[slot.index] == null)
+  if (open) {
+    open.team[open.index] = arrival
+    return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+  }
+
+  const ranked = slots.map((slot) => ({
+    ...slot,
+    player: slot.team[slot.index],
+    rank: courtClaim(slot.team[slot.index].id, recentGames),
+  }))
+  const weakestRank = Math.min(...ranked.map((slot) => slot.rank))
+  const chosen = shuffle(ranked.filter((slot) => slot.rank === weakestRank))[0]
+  chosen.team[chosen.index] = arrival
+  nextBench.push(chosen.player)
+  return { team1: nextTeam1, team2: nextTeam2, bench: nextBench }
+}
+
+// Lower rank is bumped first.
+function courtClaim(playerId, recentGames) {
+  const last = recentGames[0]
+  if (!last) return 2
+  const lastIds = new Set(last.players.map((player) => player.id))
+  const prevIds = recentGames[1]
+    ? new Set(recentGames[1].players.map((player) => player.id))
+    : new Set()
+  if (lastIds.has(playerId) && prevIds.has(playerId)) return 0
+  if (lastIds.has(playerId)) return 1
+  return 2
+}
+
 function repeatsPartner(team1, team2, prevPairs) {
   return prevPairs.some((pair) => {
     return (

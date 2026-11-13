@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { pickPlayers, assignTeams, shuffle } from '../lib/rotation.js'
+import { pickPlayers, assignTeams, placeArrival, shuffle } from '../lib/rotation.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -198,6 +198,50 @@ router.post('/:id/next-game', asyncHandler(async (req, res) => {
   } finally {
     client.release()
   }
+}))
+
+// POST /api/sessions/:id/place-arrival — seat a late arrival on the upcoming co-op court
+router.post('/:id/place-arrival', asyncHandler(async (req, res) => {
+  const { id } = req.params
+  const { playerId, team1, team2, bench } = req.body
+
+  const { rows: [session] } = await pool.query('SELECT * FROM sessions WHERE id = $1', [id])
+  if (!session) return res.status(404).json({ error: 'Not found' })
+  if (session.mode === 'duel') {
+    return res.status(400).json({ error: 'Head-to-head keeps late arrivals on the bench' })
+  }
+  if (!Array.isArray(team1) || !Array.isArray(team2) || team1.length !== 2 || team2.length !== 2) {
+    return res.status(400).json({ error: 'team1 and team2 must each have 2 slots' })
+  }
+  if (!Array.isArray(bench)) {
+    return res.status(400).json({ error: 'bench must be a list of player ids' })
+  }
+
+  const { rows: sessionPlayers } = await pool.query(
+    `SELECT p.* FROM players p
+     JOIN session_players sp ON sp.player_id = p.id
+     WHERE sp.session_id = $1`,
+    [id]
+  )
+  const byId = Object.fromEntries(sessionPlayers.map((player) => [player.id, player]))
+  if (!byId[playerId]) {
+    return res.status(400).json({ error: 'Player is not in this session' })
+  }
+
+  const mentioned = [...team1, ...team2, ...bench]
+  if (mentioned.some((pid) => pid != null && !byId[pid])) {
+    return res.status(400).json({ error: 'One or more players are not in this session' })
+  }
+
+  const recentGames = await getRecentGames(pool, id, 2)
+  const lineup = placeArrival({
+    team1: team1.map((pid) => (pid == null ? null : byId[pid])),
+    team2: team2.map((pid) => (pid == null ? null : byId[pid])),
+    bench: bench.filter((pid) => pid != null).map((pid) => byId[pid]),
+    arrival: byId[playerId],
+    recentGames,
+  })
+  res.json(lineup)
 }))
 
 // POST /api/sessions/:id/players — add a late arrival

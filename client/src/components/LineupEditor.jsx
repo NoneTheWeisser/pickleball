@@ -134,6 +134,30 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
     setShowAddPlayer(true)
   }
 
+  async function placeInNextGame(player) {
+    if (expectedTeamSize !== 2) {
+      setBench((prev) => [...prev, player])
+      return
+    }
+
+    const res = await fetch(`/api/sessions/${sessionId}/place-arrival`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        playerId: player.id,
+        team1: team1.map((p) => p?.id ?? null),
+        team2: team2.map((p) => p?.id ?? null),
+        bench: bench.filter((p) => p?.id).map((p) => p.id),
+      }),
+    })
+    const lineup = await res.json()
+    if (!res.ok) throw new Error(lineup.error ?? 'Failed to place player')
+    setTeam1(lineup.team1)
+    setTeam2(lineup.team2)
+    setBench(lineup.bench)
+    setSelected(null)
+  }
+
   async function addExistingPlayer(player) {
     try {
       const res = await fetch(`/api/sessions/${sessionId}/players`, {
@@ -144,7 +168,12 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
       const added = await res.json()
       if (!res.ok) throw new Error(added.error ?? 'Failed to add player')
       setError(null)
-      setBench((prev) => [...prev, added])
+      try {
+        await placeInNextGame(added)
+      } catch (err) {
+        setBench((prev) => [...prev, added])
+        throw err
+      }
       setAllPlayers((prev) => prev.filter((p) => p.id !== player.id))
       onAddPlayer(added)
     } catch (err) {
@@ -217,7 +246,12 @@ export default function LineupEditor({ lineup, sessionId, onStart, onAddPlayer, 
       if (!res2.ok) throw new Error(added.error ?? 'Failed to add player to session')
 
       setError(null)
-      setBench((prev) => [...prev, player])
+      try {
+        await placeInNextGame(player)
+      } catch (err) {
+        setBench((prev) => [...prev, player])
+        throw err
+      }
       setNewName('')
       setNewAvatarId(AVATAR_GALLERY[0]?.id ?? 'avatar_02')
       setShowAddPlayer(false)

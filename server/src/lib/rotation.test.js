@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { assignTeams, pickPlayers } from './rotation.js'
+import { assignTeams, pickPlayers, placeArrival } from './rotation.js'
 
 function roster(count) {
   return Array.from({ length: count }, (_, i) => ({ id: i + 1 }))
@@ -138,6 +138,130 @@ describe('rotation', { concurrency: false }, () => {
     assert.ok(newPlayerOnCourt > 0)
     assert.ok(newPlayerBenched > 0)
     assert.ok(sitterBenched > 0)
+  })
+
+  it('fills an open slot when a late arrival joins', () => {
+    const team1 = [{ id: 1 }, null]
+    const team2 = [{ id: 2 }, { id: 3 }]
+    const bench = [{ id: 4 }]
+    const arrival = { id: 5 }
+    const recentGames = [
+      { players: [{ id: 1 }, { id: 2 }] },
+      { players: [{ id: 1 }, { id: 3 }] },
+    ]
+
+    const lineup = placeArrival({ team1, team2, bench, arrival, recentGames })
+
+    assert.deepEqual(lineup.team1, [{ id: 1 }, arrival])
+    assert.deepEqual(lineup.team2, team2)
+    assert.deepEqual(lineup.bench, bench)
+    assert.deepEqual(team1, [{ id: 1 }, null])
+  })
+
+  it('bumps the player who played the last two games and leaves the other three', () => {
+    const satTwice = { id: 1 }
+    const playedLast = { id: 2 }
+    const otherA = { id: 3 }
+    const otherB = { id: 4 }
+    const arrival = { id: 5 }
+    const recentGames = [
+      { players: [satTwice, playedLast, otherA, otherB] },
+      { players: [satTwice, { id: 8 }, { id: 9 }, { id: 10 }] },
+    ]
+
+    const lineup = placeArrival({
+      team1: [playedLast, otherA],
+      team2: [otherB, satTwice],
+      bench: [{ id: 6 }],
+      arrival,
+      recentGames,
+    })
+
+    assert.deepEqual(lineup.team1, [playedLast, otherA])
+    assert.deepEqual(lineup.team2, [otherB, arrival])
+    assert.deepEqual(lineup.bench.map((player) => player.id), [6, satTwice.id])
+  })
+
+  it('bumps exactly one player when nobody has played yet', () => {
+    const court = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]
+    const arrival = { id: 5 }
+    const bumped = new Set()
+
+    for (let trial = 0; trial < 40; trial++) {
+      const lineup = placeArrival({
+        team1: [court[0], court[1]],
+        team2: [court[2], court[3]],
+        bench: [],
+        arrival,
+        recentGames: [],
+      })
+      const slots = [...lineup.team1, ...lineup.team2]
+      const moved = court.filter((player) => !slots.includes(player))
+      assert.equal(moved.length, 1)
+      assert.deepEqual(lineup.bench, moved)
+      for (const [index, player] of court.entries()) {
+        const side = index < 2 ? lineup.team1 : lineup.team2
+        const slot = index % 2
+        if (player === moved[0]) assert.equal(side[slot], arrival)
+        else assert.equal(side[slot], player)
+      }
+      bumped.add(moved[0].id)
+    }
+
+    assert.ok(bumped.size > 1)
+  })
+
+  it('bumps the next-weakest player when a second arrival joins', () => {
+    const playedBoth = { id: 1 }
+    const playedLast = { id: 2 }
+    const steadyA = { id: 3 }
+    const steadyB = { id: 4 }
+    const recentGames = [
+      { players: [playedBoth, playedLast] },
+      { players: [playedBoth] },
+    ]
+
+    const first = placeArrival({
+      team1: [playedBoth, playedLast],
+      team2: [steadyA, steadyB],
+      bench: [],
+      arrival: { id: 5 },
+      recentGames,
+    })
+    assert.equal(first.team1[0].id, 5)
+    assert.equal(first.team1[1], playedLast)
+    assert.deepEqual(first.team2, [steadyA, steadyB])
+
+    const second = placeArrival({
+      ...first,
+      arrival: { id: 6 },
+      recentGames,
+    })
+
+    assert.equal(second.team1[0].id, 5)
+    assert.equal(second.team1[1].id, 6)
+    assert.deepEqual(second.team2, [steadyA, steadyB])
+    assert.deepEqual(second.bench.map((player) => player.id), [playedBoth.id, playedLast.id])
+  })
+
+  it('leaves a head-to-head court alone and puts the arrival on the bench', () => {
+    const team1 = [{ id: 1 }]
+    const team2 = [{ id: 2 }]
+    const bench = [{ id: 3 }]
+    const lineup = placeArrival({
+      team1,
+      team2,
+      bench,
+      arrival: { id: 4 },
+      recentGames: [
+        { players: [{ id: 1 }, { id: 2 }] },
+        { players: [{ id: 1 }, { id: 2 }] },
+      ],
+    })
+
+    assert.deepEqual(lineup.team1, team1)
+    assert.deepEqual(lineup.team2, team2)
+    assert.deepEqual(lineup.bench.map((player) => player.id), [3, 4])
   })
 
   it('does not repeat a partnership from the previous game', () => {
