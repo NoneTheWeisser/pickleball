@@ -4,7 +4,7 @@ A lightweight web app for managing weekly pickleball nights with a small group o
 
 The app handles the logistics so you can focus on playing: add players for the night (including late arrivals), auto-rotates who sits out and who plays next, lets you override the lineup before each game, and tracks wins and losses across the session.
 
-**Live demo:** https://nonetheweisser-pickleball-night.fly.dev
+**Live demo:** https://pickleballnight.app
 
 ---
 
@@ -180,6 +180,7 @@ The app is deployed on [Fly.io](https://fly.io/) with [Neon](https://neon.tech/)
 
 - **Local dev** uses a local PostgreSQL database (`postgresql://localhost/pickleball`) — no SSL required
 - **Production** uses a Neon connection string stored as a Fly secret (`DATABASE_URL`) — SSL is applied automatically
+- **Public URL** is [https://pickleballnight.app](https://pickleballnight.app). DNS is on Cloudflare with the proxy off (grey cloud): an A record and an AAAA record on `@`, using the addresses from `fly ips list`. Fly issues the TLS certificate (`fly certs add pickleballnight.app`). `www` is not set up. [https://nonetheweisser-pickleball-night.fly.dev](https://nonetheweisser-pickleball-night.fly.dev) still serves the same app. Deploys do not change the domain.
 
 To deploy:
 ```
