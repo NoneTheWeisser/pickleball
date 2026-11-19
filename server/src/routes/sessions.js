@@ -150,10 +150,10 @@ router.get('/:id/proposed-rotation', asyncHandler(async (req, res) => {
     })
   }
 
-  const recentGames = await getRecentGames(pool, id, 2)
+  const recentGames = await getRecentGames(pool, id, 100)
   const gamesPlayed = await getGamesPlayed(pool, id)
   const courtIds = pickPlayers(sessionPlayers, recentGames, gamesPlayed)
-  const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames[0] ?? null)
+  const { team1: team1Ids, team2: team2Ids } = assignTeams(courtIds, recentGames)
 
   const byId = Object.fromEntries(sessionPlayers.map((p) => [p.id, p]))
   const benchIds = shuffle(sessionPlayers.map((p) => p.id).filter((id) => !courtIds.includes(id)))
