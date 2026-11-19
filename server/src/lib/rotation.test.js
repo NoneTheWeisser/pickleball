@@ -290,7 +290,7 @@ describe('rotation', { concurrency: false }, () => {
     const previousPairs = [new Set([1, 2]), new Set([3, 4])]
 
     for (let trial = 0; trial < 50; trial++) {
-      const { team1, team2 } = assignTeams([1, 2, 3, 4], previousGame)
+      const { team1, team2 } = assignTeams([1, 2, 3, 4], [previousGame])
       assert.equal(team1.length, 2)
       assert.equal(team2.length, 2)
       assert.deepEqual([...team1, ...team2].sort((a, b) => a - b), [1, 2, 3, 4])
@@ -302,5 +302,72 @@ describe('rotation', { concurrency: false }, () => {
         }
       }
     }
+  })
+
+  it('does not repeat the partner from before a player sat', () => {
+    const recentGames = [
+      {
+        players: [
+          { id: 3, team: 1 },
+          { id: 4, team: 1 },
+          { id: 5, team: 2 },
+          { id: 6, team: 2 },
+        ],
+      },
+      {
+        players: [
+          { id: 1, team: 1 },
+          { id: 2, team: 1 },
+          { id: 3, team: 2 },
+          { id: 4, team: 2 },
+        ],
+      },
+    ]
+
+    for (let trial = 0; trial < 40; trial++) {
+      const { team1, team2 } = assignTeams([1, 2, 5, 6], recentGames)
+      for (const team of [team1, team2]) {
+        const pair = [...team].sort((a, b) => a - b).join(',')
+        assert.notEqual(pair, '1,2')
+        assert.notEqual(pair, '5,6')
+      }
+    }
+  })
+
+  it('keeps a partnership from before a player’s most recent game', () => {
+    const recentGames = [
+      {
+        players: [
+          { id: 2, team: 1 },
+          { id: 4, team: 1 },
+          { id: 5, team: 2 },
+          { id: 6, team: 2 },
+        ],
+      },
+      {
+        players: [
+          { id: 1, team: 1 },
+          { id: 3, team: 1 },
+          { id: 7, team: 2 },
+          { id: 8, team: 2 },
+        ],
+      },
+      {
+        players: [
+          { id: 1, team: 1 },
+          { id: 2, team: 1 },
+          { id: 3, team: 2 },
+          { id: 4, team: 2 },
+        ],
+      },
+    ]
+    let pairedAgain = false
+
+    for (let trial = 0; trial < 40; trial++) {
+      const { team1, team2 } = assignTeams([1, 2, 5, 7], recentGames)
+      pairedAgain = pairedAgain || [team1, team2].some((team) => team.includes(1) && team.includes(2))
+    }
+
+    assert.equal(pairedAgain, true)
   })
 })

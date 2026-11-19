@@ -54,30 +54,72 @@ function orderedByGamesPlayed(ids, count) {
 
 /**
  * Assign 2v2 teams from 4 player IDs.
- * Avoids repeating the same partner pairing from the previous game.
+ * For each player, avoids the partner from the last game that player was in,
+ * even if they sat since then. recentGames is most-recent first. When every
+ * pairing repeats someone, the one with the fewest repeats is used.
  */
-export function assignTeams(courtIds, previousGame) {
-  const prevPairs = previousGame
-    ? [
-        new Set(previousGame.players.filter((p) => p.team === 1).map((p) => p.id)),
-        new Set(previousGame.players.filter((p) => p.team === 2).map((p) => p.id)),
-      ]
-    : []
+export function assignTeams(courtIds, recentGames = []) {
+  const forbidden = lastPartnerPairs(courtIds, recentGames)
+  let best = null
+  let bestRepeats = Infinity
 
-  const maxAttempts = 20
-  for (let i = 0; i < maxAttempts; i++) {
-    const shuffled = shuffle([...courtIds])
-    const team1 = [shuffled[0], shuffled[1]]
-    const team2 = [shuffled[2], shuffled[3]]
-
-    if (!repeatsPartner(team1, team2, prevPairs)) {
-      return { team1, team2 }
+  for (const option of partnerOptions(courtIds)) {
+    const repeats = repeatedPartnerCount(option.team1, option.team2, forbidden)
+    if (repeats < bestRepeats) {
+      best = option
+      bestRepeats = repeats
     }
   }
 
-  // Fallback: return whatever we have (all pairings exhausted — unlikely with 4 players)
-  const shuffled = shuffle([...courtIds])
-  return { team1: [shuffled[0], shuffled[1]], team2: [shuffled[2], shuffled[3]] }
+  return best
+}
+
+function lastPartnerPairs(courtIds, recentGames) {
+  const onCourt = new Set(courtIds)
+  const pairs = []
+  const seen = new Set()
+
+  for (const id of courtIds) {
+    const partnerId = lastPartnerId(id, recentGames)
+    if (partnerId == null || !onCourt.has(partnerId)) continue
+    const key = [id, partnerId].sort((a, b) => a - b).join('-')
+    if (seen.has(key)) continue
+    seen.add(key)
+    pairs.push(new Set([id, partnerId]))
+  }
+
+  return pairs
+}
+
+function lastPartnerId(playerId, recentGames) {
+  for (const game of recentGames) {
+    const players = game.players ?? []
+    const me = players.find((player) => player.id === playerId)
+    if (!me) continue
+    const partner = players.find((player) => player.team === me.team && player.id !== playerId)
+    return partner?.id ?? null
+  }
+  return null
+}
+
+function partnerOptions(courtIds) {
+  const [a, b, c, d] = courtIds
+  const matchings = [
+    [[a, b], [c, d]],
+    [[a, c], [b, d]],
+    [[a, d], [b, c]],
+  ]
+
+  return shuffle(matchings).map(([left, right]) => {
+    const [team1, team2] = shuffle([shuffle(left), shuffle(right)])
+    return { team1, team2 }
+  })
+}
+
+function repeatedPartnerCount(team1, team2, forbidden) {
+  return [team1, team2].filter((team) =>
+    forbidden.some((pair) => pair.has(team[0]) && pair.has(team[1]))
+  ).length
 }
 
 /**
@@ -134,15 +176,6 @@ function courtClaim(playerId, recentGames) {
   if (lastIds.has(playerId) && prevIds.has(playerId)) return 0
   if (lastIds.has(playerId)) return 1
   return 2
-}
-
-function repeatsPartner(team1, team2, prevPairs) {
-  return prevPairs.some((pair) => {
-    return (
-      (pair.has(team1[0]) && pair.has(team1[1])) ||
-      (pair.has(team2[0]) && pair.has(team2[1]))
-    )
-  })
 }
 
 function shuffle(arr) {
