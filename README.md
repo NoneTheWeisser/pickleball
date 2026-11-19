@@ -180,7 +180,7 @@ The app is deployed on [Fly.io](https://fly.io/) with [Neon](https://neon.tech/)
 
 - **Local dev** uses a local PostgreSQL database (`postgresql://localhost/pickleball`) — no SSL required
 - **Production** uses a Neon connection string stored as a Fly secret (`DATABASE_URL`) — SSL is applied automatically
-- **Public URL** is [https://pickleballnight.app](https://pickleballnight.app). DNS is on Cloudflare with the proxy off (grey cloud): an A record and an AAAA record on `@`, using the addresses from `fly ips list`. Fly issues the TLS certificate (`fly certs add pickleballnight.app`). `www` is not set up. [https://nonetheweisser-pickleball-night.fly.dev](https://nonetheweisser-pickleball-night.fly.dev) still serves the same app. Deploys do not change the domain.
+- **Public URL** is [https://pickleballnight.app](https://pickleballnight.app). [https://www.pickleballnight.app](https://www.pickleballnight.app) serves the same app. DNS is on Cloudflare with the proxy off (grey cloud): an A record and an AAAA record on `@` and on `www`, using the addresses from `fly ips list`. Fly issues the TLS certificates (`fly certs add`). [https://nonetheweisser-pickleball-night.fly.dev](https://nonetheweisser-pickleball-night.fly.dev) still works. Deploys do not change the domain.
 
 To deploy:
 ```
