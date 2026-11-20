@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logError } from '../lib/logError.js'
 import LoadingScreen from '../components/LoadingScreen'
 
-function KpiCard({ label, name, stat, color }) {
+function KpiCard({ label, name, stat, color, wrap = false }) {
   const colorClass = {
     gold: 'border-retro-gold text-retro-gold',
     cyan: 'border-retro-cyan text-retro-cyan',
@@ -14,7 +14,7 @@ function KpiCard({ label, name, stat, color }) {
   return (
     <div className={`bg-retro-card border-2 ${colorClass} p-4 flex flex-col gap-1 min-w-0`}>
       <p className="font-mono text-retro-cream/50 text-[10px] tracking-widest uppercase">{label}</p>
-      <p className={`font-display text-xl tracking-wider truncate ${colorClass.split(' ')[1]}`}>{name}</p>
+      <p className={`font-display text-xl tracking-wider ${wrap ? 'leading-none' : 'truncate'} ${colorClass.split(' ')[1]}`}>{name}</p>
       <p className="font-mono text-retro-cream/70 text-sm">{stat}</p>
     </div>
   )
@@ -105,6 +105,11 @@ function WinningestPairs({ pairs }) {
   )
 }
 
+function pickNemesis(nemeses) {
+  if (!nemeses?.length) return null
+  return nemeses[Math.floor(Math.random() * nemeses.length)]
+}
+
 const MODES = [
   { key: 'team', label: 'Co-Op Battle' },
   { key: 'duel', label: 'Head to Head' },
@@ -130,6 +135,8 @@ export default function Leaderboard() {
         setError(err.message)
       })
   }, [mode])
+
+  const nemesis = useMemo(() => pickNemesis(data?.kpis?.nemeses), [data])
 
   if (error) {
     return (
@@ -210,12 +217,23 @@ export default function Leaderboard() {
                 color="cyan"
               />
             ) : null}
+            {/* Most Improved stays on the payload. Hidden until we want the card back.
             {kpis.mostImproved ? (
               <KpiCard
                 label="Most Improved"
                 name={kpis.mostImproved.name}
                 stat={`${kpis.mostImproved.improvement > 0 ? '+' : ''}${kpis.mostImproved.improvement}% recent`}
                 color="green"
+              />
+            ) : null}
+            */}
+            {nemesis ? (
+              <KpiCard
+                label="Nemesis"
+                name={nemesis.names.join(' & ')}
+                stat={`${nemesis.wins}–${nemesis.losses} vs ${nemesis.against}`}
+                color="green"
+                wrap
               />
             ) : null}
             {kpis.longestGame ? (

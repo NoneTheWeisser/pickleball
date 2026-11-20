@@ -1,9 +1,28 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { computePlayerStats, winningestPairs } from '../lib/leaderboardStats.js'
+import { computePlayerStats, nemesisMatchups, winningestPairs } from '../lib/leaderboardStats.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
+
+function gamesFromRows(rows) {
+  const gameMap = new Map()
+  for (const row of rows) {
+    if (!gameMap.has(row.game_id)) {
+      gameMap.set(row.game_id, {
+        team1: [],
+        team2: [],
+        scoreTeam1: Number(row.score_team1) || 0,
+        scoreTeam2: Number(row.score_team2) || 0,
+      })
+    }
+    const game = gameMap.get(row.game_id)
+    const player = { id: row.id, name: row.name }
+    if (row.team === 1) game.team1.push(player)
+    else if (row.team === 2) game.team2.push(player)
+  }
+  return [...gameMap.values()]
+}
 
 // GET /api/leaderboard?mode=team|duel
 router.get('/leaderboard', asyncHandler(async (req, res) => {
@@ -91,25 +110,14 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
     ? improvedCandidates.reduce((best, p) => p.improvement > best.improvement ? p : best)
     : null
 
-  let pairs
-  if (mode === 'team') {
-    const gameMap = new Map()
-    for (const row of rows) {
-      if (!gameMap.has(row.game_id)) {
-        gameMap.set(row.game_id, {
-          team1: [],
-          team2: [],
-          scoreTeam1: Number(row.score_team1) || 0,
-          scoreTeam2: Number(row.score_team2) || 0,
-        })
-      }
-      const game = gameMap.get(row.game_id)
-      const player = { id: row.id, name: row.name }
-      if (row.team === 1) game.team1.push(player)
-      else if (row.team === 2) game.team2.push(player)
-    }
-    pairs = winningestPairs([...gameMap.values()])
-  }
+  const games = gamesFromRows(rows)
+  const nemeses = nemesisMatchups(games).map((matchup) => ({
+    names: matchup.names,
+    wins: matchup.wins,
+    losses: matchup.losses,
+    against: matchup.against,
+  }))
+  const pairs = mode === 'team' ? winningestPairs(games) : undefined
 
   res.json({
     ...(mode === 'team' ? { pairs } : {}),
@@ -123,6 +131,7 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
       mostImproved: mostImproved
         ? { id: mostImproved.id, name: mostImproved.name, improvement: mostImproved.improvement }
         : null,
+      nemeses,
       longestGame,
     },
     players,

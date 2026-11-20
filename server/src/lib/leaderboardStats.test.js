@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { computePlayerStats, winningestPairs } from './leaderboardStats.js'
+import { computePlayerStats, nemesisMatchup, nemesisMatchups, winningestPairs } from './leaderboardStats.js'
 
 function game({ wasWinner, team, scoreTeam1, scoreTeam2 }) {
   return { wasWinner, team, scoreTeam1, scoreTeam2 }
@@ -256,5 +256,121 @@ describe('winningestPairs', () => {
     const pairs = winningestPairs(games)
     assert.equal(pairs.length, 5)
     assert.deepEqual(pairs.map((pair) => pair.wins), [8, 7, 6, 5, 4])
+  })
+})
+
+function lossesTo(victim, partner, opponents, losses, wins) {
+  const games = []
+  for (let i = 0; i < losses; i++) {
+    games.push(match([victim, partner], opponents, 5, 11))
+  }
+  for (let i = 0; i < wins; i++) {
+    games.push(match([victim, partner], [...opponents].reverse(), 11, 5))
+  }
+  return games
+}
+
+describe('nemesisMatchup', () => {
+  it('names the opposing pair a player has lost to most, from the winners side', () => {
+    const alice = person(1, 'Alice')
+    const dave = person(3, 'Dave')
+    const nick = person(4, 'Nick')
+    const result = nemesisMatchup(lossesTo(alice, person(2, 'Carol'), [dave, nick], 4, 1))
+    assert.deepEqual(result.ids, [3, 4])
+    assert.deepEqual(result.names, ['Dave', 'Nick'])
+    assert.equal(result.wins, 4)
+    assert.equal(result.losses, 1)
+    assert.equal(result.against, 'Alice')
+  })
+
+  it('ignores a matchup with fewer than 3 games', () => {
+    const result = nemesisMatchup(lossesTo(
+      person(1, 'Alice'),
+      person(2, 'Carol'),
+      [person(3, 'Dave'), person(4, 'Nick')],
+      2,
+      0,
+    ))
+    assert.equal(result, null)
+  })
+
+  it('ranks more losses above a more lopsided shorter matchup', () => {
+    const games = [
+      ...lossesTo(person(1, 'Alice'), person(2, 'Carol'), [person(3, 'Dave'), person(4, 'Nick')], 5, 0),
+      ...lossesTo(person(5, 'Bob'), person(6, 'Bea'), [person(7, 'Gina'), person(8, 'Hal')], 3, 2),
+    ]
+    const result = nemesisMatchup(games)
+    assert.deepEqual(result.names, ['Dave', 'Nick'])
+    assert.equal(result.wins, 5)
+    assert.equal(result.losses, 0)
+    assert.equal(result.against, 'Alice')
+  })
+
+  it('breaks a tie on losses with the more lopsided record', () => {
+    const games = [
+      ...lossesTo(person(5, 'Bob'), person(6, 'Bea'), [person(7, 'Gina'), person(8, 'Hal')], 5, 1),
+      ...lossesTo(person(1, 'Alice'), person(2, 'Carol'), [person(3, 'Dave'), person(4, 'Nick')], 5, 0),
+    ]
+    const result = nemesisMatchup(games)
+    assert.equal(result.wins, 5)
+    assert.equal(result.losses, 0)
+    assert.equal(result.winPct, 100)
+    assert.equal(result.against, 'Alice')
+  })
+
+  it('uses the single opponent in a head-to-head game', () => {
+    const alice = person(1, 'Alice')
+    const bob = person(2, 'Bob')
+    const games = [
+      match([alice], [bob], 5, 11),
+      match([alice], [bob], 5, 11),
+      match([bob], [alice], 11, 5),
+      match([alice], [bob], 11, 9),
+    ]
+    const result = nemesisMatchup(games)
+    assert.deepEqual(result.names, ['Bob'])
+    assert.equal(result.wins, 3)
+    assert.equal(result.losses, 1)
+    assert.equal(result.against, 'Alice')
+  })
+
+  it('returns null when the matchup is even', () => {
+    const games = [
+      match([person(1, 'Alice')], [person(2, 'Bob')], 11, 5),
+      match([person(1, 'Alice')], [person(2, 'Bob')], 11, 5),
+      match([person(1, 'Alice')], [person(2, 'Bob')], 11, 5),
+      match([person(2, 'Bob')], [person(1, 'Alice')], 11, 5),
+      match([person(2, 'Bob')], [person(1, 'Alice')], 11, 5),
+      match([person(2, 'Bob')], [person(1, 'Alice')], 11, 5),
+    ]
+    assert.equal(nemesisMatchup(games), null)
+  })
+
+  it('lists every qualifying rivalry with the worst one first', () => {
+    const games = [
+      match([person(1, 'Alice')], [person(2, 'Bob')], 5, 11),
+      match([person(1, 'Alice')], [person(2, 'Bob')], 5, 11),
+      match([person(1, 'Alice')], [person(2, 'Bob')], 5, 11),
+      match([person(3, 'Carol')], [person(4, 'Dave')], 11, 9),
+      match([person(3, 'Carol')], [person(4, 'Dave')], 5, 11),
+      match([person(3, 'Carol')], [person(4, 'Dave')], 5, 11),
+      match([person(3, 'Carol')], [person(4, 'Dave')], 5, 11),
+    ]
+    const results = nemesisMatchups(games)
+    assert.deepEqual(results.map((row) => [row.against, row.wins, row.losses]), [
+      ['Alice', 3, 0],
+      ['Carol', 3, 1],
+    ])
+    assert.equal(nemesisMatchup(games).against, 'Alice')
+  })
+
+  it('does not treat a teammate as the nemesis', () => {
+    const alice = person(1, 'Alice')
+    const carol = person(2, 'Carol')
+    const games = lossesTo(alice, carol, [person(3, 'Dave'), person(4, 'Nick')], 3, 0)
+    const result = nemesisMatchup(games)
+    assert.deepEqual(result.names, ['Dave', 'Nick'])
+    assert.equal(result.against, 'Alice')
+    assert.ok(!result.names.includes('Carol'))
   })
 })
