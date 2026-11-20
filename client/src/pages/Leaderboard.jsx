@@ -155,6 +155,7 @@ export default function Leaderboard() {
                 <tr className="bg-retro-cyan/20 text-retro-cyan text-xs tracking-widest">
                   <th className="text-left py-2 px-3">#</th>
                   <th className="text-left py-2 px-3">Player</th>
+                  <th className="text-right py-2 px-3">GP</th>
                   <th className="text-right py-2 px-3">W</th>
                   <th className="text-right py-2 px-3">L</th>
                   <th className="text-right py-2 px-3">Win%</th>
@@ -177,6 +178,7 @@ export default function Leaderboard() {
                       <td className={`py-2 px-3 font-display tracking-wide ${isTop ? 'text-retro-gold' : ''}`}>
                         {p.name}
                       </td>
+                      <td className="py-2 px-3 text-right">{p.totalGames}</td>
                       <td className="py-2 px-3 text-right">{p.wins}</td>
                       <td className="py-2 px-3 text-right text-retro-cream/60">{p.losses}</td>
                       <td className="py-2 px-3 text-right">{p.winPct}%</td>
