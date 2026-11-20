@@ -26,6 +26,22 @@ function formatStreak(currentStreak) {
   return '—'
 }
 
+function formatBestStreak(bestStreak) {
+  if (bestStreak > 0) return `${bestStreak}W`
+  return '—'
+}
+
+function formatPlusMinus(plusMinus) {
+  if (plusMinus > 0) return `+${plusMinus}`
+  return String(plusMinus)
+}
+
+function plusMinusClass(plusMinus) {
+  if (plusMinus > 0) return 'text-retro-green'
+  if (plusMinus < 0) return 'text-retro-pink'
+  return 'text-retro-cream/30'
+}
+
 const MODES = [
   { key: 'team', label: 'Co-Op Battle' },
   { key: 'duel', label: 'Head to Head' },
@@ -74,7 +90,7 @@ export default function Leaderboard() {
   const hasData = players.length > 0
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
+    <div className="max-w-4xl mx-auto px-4 py-10 flex flex-col gap-8">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-mono text-retro-cyan text-xs tracking-[0.3em] mb-1">ALL-TIME</p>
@@ -149,8 +165,8 @@ export default function Leaderboard() {
           </div>
 
           {/* Table */}
-          <section>
-            <table className="w-full border-collapse font-mono text-sm">
+          <section className="overflow-x-auto">
+            <table className="w-full border-collapse font-mono text-sm whitespace-nowrap">
               <thead>
                 <tr className="bg-retro-cyan/20 text-retro-cyan text-xs tracking-widest">
                   <th className="text-left py-2 px-3">#</th>
@@ -159,7 +175,11 @@ export default function Leaderboard() {
                   <th className="text-right py-2 px-3">W</th>
                   <th className="text-right py-2 px-3">L</th>
                   <th className="text-right py-2 px-3">Win%</th>
+                  <th className="text-right py-2 px-3">PF</th>
+                  <th className="text-right py-2 px-3">PA</th>
+                  <th className="text-right py-2 px-3">+/−</th>
                   <th className="text-right py-2 px-3">Streak</th>
+                  <th className="text-right py-2 px-3">Best</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,10 +202,20 @@ export default function Leaderboard() {
                       <td className="py-2 px-3 text-right">{p.wins}</td>
                       <td className="py-2 px-3 text-right text-retro-cream/60">{p.losses}</td>
                       <td className="py-2 px-3 text-right">{p.winPct}%</td>
+                      <td className="py-2 px-3 text-right">{p.pointsFor}</td>
+                      <td className="py-2 px-3 text-right text-retro-cream/60">{p.pointsAgainst}</td>
+                      <td className={`py-2 px-3 text-right ${plusMinusClass(p.plusMinus)}`}>
+                        {formatPlusMinus(p.plusMinus)}
+                      </td>
                       <td className={`py-2 px-3 text-right ${
                         p.currentStreak > 0 ? 'text-retro-green' : p.currentStreak < 0 ? 'text-retro-pink' : 'text-retro-cream/30'
                       }`}>
                         {formatStreak(p.currentStreak)}
+                      </td>
+                      <td className={`py-2 px-3 text-right ${
+                        p.bestStreak > 0 ? 'text-retro-green' : 'text-retro-cream/30'
+                      }`}>
+                        {formatBestStreak(p.bestStreak)}
                       </td>
                     </tr>
                   )
