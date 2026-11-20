@@ -42,6 +42,69 @@ function plusMinusClass(plusMinus) {
   return 'text-retro-cream/30'
 }
 
+function pairNames(pair) {
+  return pair.names.join(' & ')
+}
+
+function WinningestPairs({ pairs }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <div>
+        <p className="font-mono text-retro-gold text-xs tracking-[0.3em] mb-1">PARTNERS</p>
+        <h2 className="font-display text-4xl tracking-widest text-retro-cream uppercase">
+          Winningest Pairs
+        </h2>
+      </div>
+      {pairs.length === 0 ? (
+        <p className="font-mono text-retro-cream/50 text-sm tracking-wider">
+          There are not enough games together yet.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse font-mono text-sm whitespace-nowrap">
+            <thead>
+              <tr className="bg-retro-gold/20 text-retro-gold text-xs tracking-widest">
+                <th className="text-left py-2 px-3">#</th>
+                <th className="text-left py-2 px-3">Pair</th>
+                <th className="text-right py-2 px-3">W–L</th>
+                <th className="text-right py-2 px-3">Win%</th>
+                <th className="text-right py-2 px-3">Together</th>
+                <th className="text-right py-2 px-3">+/−</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pairs.map((pair, index) => {
+                const isTop = index === 0
+                return (
+                  <tr
+                    key={pair.ids.join('-')}
+                    className={`border-b ${
+                      isTop
+                        ? 'border-retro-gold/40 bg-retro-gold/10 text-retro-gold'
+                        : 'border-retro-cream/10 text-retro-cream'
+                    }`}
+                  >
+                    <td className="py-2 px-3 text-retro-cream/40">{index + 1}</td>
+                    <td className={`py-2 px-3 font-display tracking-wide ${isTop ? 'text-retro-gold' : ''}`}>
+                      {pairNames(pair)}
+                    </td>
+                    <td className="py-2 px-3 text-right">{pair.wins}–{pair.losses}</td>
+                    <td className="py-2 px-3 text-right">{pair.winPct}%</td>
+                    <td className="py-2 px-3 text-right">{pair.gamesTogether}</td>
+                    <td className={`py-2 px-3 text-right ${plusMinusClass(pair.plusMinus)}`}>
+                      {formatPlusMinus(pair.plusMinus)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const MODES = [
   { key: 'team', label: 'Co-Op Battle' },
   { key: 'duel', label: 'Head to Head' },
@@ -86,8 +149,9 @@ export default function Leaderboard() {
     return <LoadingScreen />
   }
 
-  const { kpis, players } = data
+  const { kpis, players, pairs } = data
   const hasData = players.length > 0
+  const showPairs = mode === 'team' && Array.isArray(pairs)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 flex flex-col gap-8">
@@ -164,8 +228,14 @@ export default function Leaderboard() {
             ) : null}
           </div>
 
-          {/* Table */}
-          <section className="overflow-x-auto">
+          <section className="flex flex-col gap-4">
+            <div>
+              <p className="font-mono text-retro-cyan text-xs tracking-[0.3em] mb-1">PLAYERS</p>
+              <h2 className="font-display text-4xl tracking-widest text-retro-cream uppercase">
+                Player Ranks
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
             <table className="w-full border-collapse font-mono text-sm whitespace-nowrap">
               <thead>
                 <tr className="bg-retro-cyan/20 text-retro-cyan text-xs tracking-widest">
@@ -222,7 +292,10 @@ export default function Leaderboard() {
                 })}
               </tbody>
             </table>
+            </div>
           </section>
+
+          {showPairs ? <WinningestPairs pairs={pairs} /> : null}
         </>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
-import { computePlayerStats } from '../lib/leaderboardStats.js'
+import { computePlayerStats, winningestPairs } from '../lib/leaderboardStats.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 
 const router = Router()
@@ -15,6 +15,7 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
       p.name,
       gp.was_winner,
       gp.team,
+      g.id AS game_id,
       g.score_team1,
       g.score_team2,
       g.ended_at
@@ -90,7 +91,28 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
     ? improvedCandidates.reduce((best, p) => p.improvement > best.improvement ? p : best)
     : null
 
+  let pairs
+  if (mode === 'team') {
+    const gameMap = new Map()
+    for (const row of rows) {
+      if (!gameMap.has(row.game_id)) {
+        gameMap.set(row.game_id, {
+          team1: [],
+          team2: [],
+          scoreTeam1: Number(row.score_team1) || 0,
+          scoreTeam2: Number(row.score_team2) || 0,
+        })
+      }
+      const game = gameMap.get(row.game_id)
+      const player = { id: row.id, name: row.name }
+      if (row.team === 1) game.team1.push(player)
+      else if (row.team === 2) game.team2.push(player)
+    }
+    pairs = winningestPairs([...gameMap.values()])
+  }
+
   res.json({
+    ...(mode === 'team' ? { pairs } : {}),
     kpis: {
       allTimeWinner: allTimeWinner
         ? { id: allTimeWinner.id, name: allTimeWinner.name, wins: allTimeWinner.wins, winPct: allTimeWinner.winPct }
